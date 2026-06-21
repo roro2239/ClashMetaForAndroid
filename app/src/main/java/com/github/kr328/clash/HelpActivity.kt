@@ -10,7 +10,6 @@ class HelpActivity : BaseActivity<SimpleComposeDesign>() {
             this,
             title = getString(DesignR.string.help),
             entries = listOf(
-                SimpleComposeDesign.Entry.Tip(getString(DesignR.string.tips_help)),
                 SimpleComposeDesign.Entry.Category(getString(DesignR.string.document)),
                 SimpleComposeDesign.Entry.Link(
                     title = getString(DesignR.string.clash_wiki),
