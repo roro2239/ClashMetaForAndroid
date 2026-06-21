@@ -7,30 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Apps
-import androidx.compose.material.icons.filled.Dns
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.NetworkCheck
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.SettingsEthernet
-import androidx.compose.material.icons.filled.VpnLock
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,7 +22,25 @@ import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.model.AccessControlMode
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.ui.ClashMiuixDialog
+import com.github.kr328.clash.ui.ClashMiuixTheme
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.AppRecording
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Link
+import top.yukonga.miuix.kmp.icon.extended.Lock
+import top.yukonga.miuix.kmp.icon.extended.Settings
+import top.yukonga.miuix.kmp.icon.extended.Translate
+import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.preference.RadioButtonPreference
+import top.yukonga.miuix.kmp.preference.SwitchPreference
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 class NetworkSettingsComposeDesign(
     context: Context,
@@ -72,7 +66,7 @@ class NetworkSettingsComposeDesign(
     override val root = ComposeView(context).apply {
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
         setContent {
-            PageTheme {
+            ClashMiuixTheme {
                 PageContent()
             }
         }
@@ -87,29 +81,17 @@ class NetworkSettingsComposeDesign(
     }
 
     @Composable
-    private fun PageTheme(content: @Composable () -> Unit) {
-        val colors = if (androidx.compose.foundation.isSystemInDarkTheme()) {
-            darkColorScheme()
-        } else {
-            lightColorScheme()
-        }
-
-        MaterialTheme(colorScheme = colors, content = content)
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
     private fun PageContent() {
         val vpnOptionsEnabled = enableVpn && !running
 
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text(context.getString(com.github.kr328.clash.design.R.string.network)) },
+                    title = context.getString(com.github.kr328.clash.design.R.string.network),
                     navigationIcon = {
                         IconButton(onClick = { (context as? Activity)?.onBackPressed() }) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = MiuixIcons.Back,
                                 contentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
                             )
                         }
@@ -129,7 +111,7 @@ class NetworkSettingsComposeDesign(
             ) {
                 item {
                     SwitchItem(
-                        icon = Icons.Default.VpnLock,
+                        icon = MiuixIcons.Lock,
                         title = context.getString(com.github.kr328.clash.design.R.string.route_system_traffic),
                         summary = context.getString(com.github.kr328.clash.design.R.string.routing_via_vpn_service),
                         checked = enableVpn,
@@ -141,32 +123,32 @@ class NetworkSettingsComposeDesign(
                 }
                 item { CategoryTitle(context.getString(com.github.kr328.clash.design.R.string.vpn_service_options)) }
                 item {
-                    SwitchItem(Icons.Default.NetworkCheck, context.getString(com.github.kr328.clash.design.R.string.bypass_private_network), context.getString(com.github.kr328.clash.design.R.string.bypass_private_network_summary), bypassPrivateNetwork, vpnOptionsEnabled) {
+                    SwitchItem(MiuixIcons.Link, context.getString(com.github.kr328.clash.design.R.string.bypass_private_network), context.getString(com.github.kr328.clash.design.R.string.bypass_private_network_summary), bypassPrivateNetwork, vpnOptionsEnabled) {
                         bypassPrivateNetwork = it
                         srvStore.bypassPrivateNetwork = it
                     }
                 }
                 item {
-                    SwitchItem(Icons.Default.Dns, context.getString(com.github.kr328.clash.design.R.string.dns_hijacking), context.getString(com.github.kr328.clash.design.R.string.dns_hijacking_summary), dnsHijacking, vpnOptionsEnabled) {
+                    SwitchItem(MiuixIcons.Link, context.getString(com.github.kr328.clash.design.R.string.dns_hijacking), context.getString(com.github.kr328.clash.design.R.string.dns_hijacking_summary), dnsHijacking, vpnOptionsEnabled) {
                         dnsHijacking = it
                         srvStore.dnsHijacking = it
                     }
                 }
                 item {
-                    SwitchItem(Icons.Default.Security, context.getString(com.github.kr328.clash.design.R.string.allow_bypass), context.getString(com.github.kr328.clash.design.R.string.allow_bypass_summary), allowBypass, vpnOptionsEnabled) {
+                    SwitchItem(MiuixIcons.Lock, context.getString(com.github.kr328.clash.design.R.string.allow_bypass), context.getString(com.github.kr328.clash.design.R.string.allow_bypass_summary), allowBypass, vpnOptionsEnabled) {
                         allowBypass = it
                         srvStore.allowBypass = it
                     }
                 }
                 item {
-                    SwitchItem(Icons.Default.Language, context.getString(com.github.kr328.clash.design.R.string.allow_ipv6), context.getString(com.github.kr328.clash.design.R.string.allow_ipv6_summary), allowIpv6, vpnOptionsEnabled) {
+                    SwitchItem(MiuixIcons.Translate, context.getString(com.github.kr328.clash.design.R.string.allow_ipv6), context.getString(com.github.kr328.clash.design.R.string.allow_ipv6_summary), allowIpv6, vpnOptionsEnabled) {
                         allowIpv6 = it
                         srvStore.allowIpv6 = it
                     }
                 }
                 if (Build.VERSION.SDK_INT >= 29) {
                     item {
-                        SwitchItem(Icons.Default.SettingsEthernet, context.getString(com.github.kr328.clash.design.R.string.system_proxy), context.getString(com.github.kr328.clash.design.R.string.system_proxy_summary), systemProxy, vpnOptionsEnabled) {
+                        SwitchItem(MiuixIcons.Settings, context.getString(com.github.kr328.clash.design.R.string.system_proxy), context.getString(com.github.kr328.clash.design.R.string.system_proxy_summary), systemProxy, vpnOptionsEnabled) {
                             systemProxy = it
                             srvStore.systemProxy = it
                         }
@@ -174,7 +156,7 @@ class NetworkSettingsComposeDesign(
                 }
                 item {
                     ClickItem(
-                        icon = Icons.Default.SettingsEthernet,
+                        icon = MiuixIcons.Settings,
                         title = context.getString(com.github.kr328.clash.design.R.string.tun_stack_mode),
                         summary = tunStackText(tunStackMode),
                         enabled = vpnOptionsEnabled,
@@ -184,7 +166,7 @@ class NetworkSettingsComposeDesign(
                 }
                 item {
                     ClickItem(
-                        icon = Icons.Default.Apps,
+                        icon = MiuixIcons.AppRecording,
                         title = context.getString(com.github.kr328.clash.design.R.string.access_control_mode),
                         summary = accessModeText(accessControlMode),
                         enabled = vpnOptionsEnabled,
@@ -194,7 +176,7 @@ class NetworkSettingsComposeDesign(
                 }
                 item {
                     ClickItem(
-                        icon = Icons.Default.Apps,
+                        icon = MiuixIcons.AppRecording,
                         title = context.getString(com.github.kr328.clash.design.R.string.access_control_packages),
                         summary = context.getString(com.github.kr328.clash.design.R.string.access_control_packages_summary),
                     ) {
@@ -231,36 +213,28 @@ class NetworkSettingsComposeDesign(
     private fun AccessModeDialog() {
         val values = AccessControlMode.values()
 
-        AlertDialog(
+        ClashMiuixDialog(
+            title = context.getString(com.github.kr328.clash.design.R.string.access_control_mode),
+            dismissText = context.getString(com.github.kr328.clash.design.R.string.cancel),
+            onDismissButton = { showAccessModeDialog = false },
             onDismissRequest = { showAccessModeDialog = false },
-            confirmButton = {
-                TextButton(onClick = { showAccessModeDialog = false }) {
-                    Text(context.getString(com.github.kr328.clash.design.R.string.cancel))
-                }
-            },
-            title = { Text(context.getString(com.github.kr328.clash.design.R.string.access_control_mode)) },
-            text = {
-                LazyColumn {
-                    items(values.size) { index ->
-                        val value = values[index]
+        ) {
+            LazyColumn {
+                items(values.size) { index ->
+                    val value = values[index]
 
-                        ListItem(
-                            headlineContent = { Text(accessModeText(value)) },
-                            trailingContent = {
-                                RadioButton(
-                                    selected = accessControlMode == value,
-                                    onClick = {
-                                        accessControlMode = value
-                                        srvStore.accessControlMode = value
-                                        showAccessModeDialog = false
-                                    },
-                                )
-                            },
-                        )
-                    }
+                    RadioButtonPreference(
+                        title = accessModeText(value),
+                        selected = accessControlMode == value,
+                        onClick = {
+                            accessControlMode = value
+                            srvStore.accessControlMode = value
+                            showAccessModeDialog = false
+                        },
+                    )
                 }
-            },
-        )
+            }
+        }
     }
 
     @Composable
@@ -272,42 +246,33 @@ class NetworkSettingsComposeDesign(
         onSelected: (String) -> Unit,
         onDismiss: () -> Unit,
     ) {
-        AlertDialog(
+        ClashMiuixDialog(
+            title = title,
+            dismissText = context.getString(com.github.kr328.clash.design.R.string.cancel),
+            onDismissButton = onDismiss,
             onDismissRequest = onDismiss,
-            confirmButton = {
-                TextButton(onClick = onDismiss) {
-                    Text(context.getString(com.github.kr328.clash.design.R.string.cancel))
+        ) {
+            LazyColumn {
+                items(values.size) { index ->
+                    RadioButtonPreference(
+                        title = labels[index],
+                        selected = selected == values[index],
+                        onClick = { onSelected(values[index]) },
+                    )
                 }
-            },
-            title = { Text(title) },
-            text = {
-                LazyColumn {
-                    items(values.size) { index ->
-                        ListItem(
-                            headlineContent = { Text(labels[index]) },
-                            trailingContent = {
-                                RadioButton(
-                                    selected = selected == values[index],
-                                    onClick = { onSelected(values[index]) },
-                                )
-                            },
-                        )
-                    }
-                }
-            },
-        )
+            }
+        }
     }
 
     @Composable
     private fun CategoryTitle(title: String) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.primary,
+            style = MiuixTheme.textStyles.title4,
+            color = MiuixTheme.colorScheme.primary,
         )
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun SwitchItem(
         icon: ImageVector,
@@ -317,26 +282,16 @@ class NetworkSettingsComposeDesign(
         enabled: Boolean = true,
         onChanged: (Boolean) -> Unit,
     ) {
-        Card(
+        SwitchPreference(
+            checked = checked,
+            onCheckedChange = onChanged,
+            title = title,
+            summary = summary,
             enabled = enabled,
-            onClick = { onChanged(!checked) },
-        ) {
-            ListItem(
-                leadingContent = { Icon(icon, contentDescription = null) },
-                headlineContent = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                supportingContent = { Text(summary, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-                trailingContent = {
-                    Switch(
-                        checked = checked,
-                        enabled = enabled,
-                        onCheckedChange = onChanged,
-                    )
-                },
-            )
-        }
+            startAction = { Icon(icon, contentDescription = null) },
+        )
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun ClickItem(
         icon: ImageVector,
@@ -345,16 +300,13 @@ class NetworkSettingsComposeDesign(
         enabled: Boolean = true,
         onClick: () -> Unit,
     ) {
-        Card(
+        ArrowPreference(
+            title = title,
+            summary = summary,
+            startAction = { Icon(icon, contentDescription = null) },
             enabled = enabled,
             onClick = onClick,
-        ) {
-            ListItem(
-                leadingContent = { Icon(icon, contentDescription = null) },
-                headlineContent = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                supportingContent = { Text(summary, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-            )
-        }
+        )
     }
 
     private fun tunStackText(value: String): String {

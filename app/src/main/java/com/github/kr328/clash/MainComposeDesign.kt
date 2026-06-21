@@ -12,36 +12,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Dns
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.lightColorScheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,7 +30,27 @@ import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.design.Design
 import com.github.kr328.clash.service.model.Profile
+import com.github.kr328.clash.ui.ClashMiuixDialog
+import com.github.kr328.clash.ui.ClashMiuixTheme
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.basic.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.NavigationBar
+import top.yukonga.miuix.kmp.basic.NavigationBarDisplayMode
+import top.yukonga.miuix.kmp.basic.NavigationBarItem
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.TabRow
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Contacts
+import top.yukonga.miuix.kmp.icon.extended.More
+import top.yukonga.miuix.kmp.icon.extended.Settings
+import top.yukonga.miuix.kmp.icon.extended.VerticalSplit
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(context) {
     sealed class Request {
@@ -102,10 +92,10 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
     )
 
     private enum class Destination(val icon: ImageVector) {
-        Home(Icons.Default.Home),
-        Proxy(Icons.Default.SwapHoriz),
-        Profiles(Icons.AutoMirrored.Filled.List),
-        Settings(Icons.Default.Settings);
+        Home(MiuixIcons.VerticalSplit),
+        Proxy(MiuixIcons.More),
+        Profiles(MiuixIcons.Contacts),
+        Settings(MiuixIcons.Settings);
     }
 
     var selectedPage by mutableIntStateOf(0)
@@ -125,7 +115,7 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
     override val root: View = ComposeView(context).apply {
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
         setContent {
-            MainMaterialTheme {
+            ClashMiuixTheme {
                 MainContent()
             }
         }
@@ -198,18 +188,6 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
     }
 
     @Composable
-    private fun MainMaterialTheme(content: @Composable () -> Unit) {
-        val dark = androidx.compose.foundation.isSystemInDarkTheme()
-        val colors = if (dark) {
-            darkColorScheme()
-        } else {
-            lightColorScheme()
-        }
-
-        MaterialTheme(colorScheme = colors, content = content)
-    }
-
-    @Composable
     private fun MainContent() {
         val pagerState = rememberPagerState(
             initialPage = selectedPage,
@@ -222,20 +200,15 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
 
         Scaffold(
             bottomBar = {
-                NavigationBar {
+                NavigationBar(mode = NavigationBarDisplayMode.IconWithSelectedLabel) {
                     Destination.entries.forEachIndexed { index, destination ->
                         NavigationBarItem(
                             selected = selectedPage == index,
                             onClick = {
                                 selectedPage = index
                             },
-                            icon = {
-                                Icon(
-                                    imageVector = destination.icon,
-                                    contentDescription = destination.label(),
-                                )
-                            },
-                            label = { Text(destination.label()) },
+                            icon = destination.icon,
+                            label = destination.label(),
                         )
                     }
                 }
@@ -258,19 +231,12 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
 
         val about = aboutVersionName
         if (about != null) {
-            AlertDialog(
+            ClashMiuixDialog(
+                title = context.getString(com.github.kr328.clash.design.R.string.about),
+                message = about,
+                confirmText = context.getString(android.R.string.ok),
+                onConfirm = { aboutVersionName = null },
                 onDismissRequest = { aboutVersionName = null },
-                confirmButton = {
-                    TextButton(onClick = { aboutVersionName = null }) {
-                        Text(context.getString(android.R.string.ok))
-                    }
-                },
-                title = {
-                    Text(context.getString(com.github.kr328.clash.design.R.string.about))
-                },
-                text = {
-                    Text(about)
-                },
             )
         }
     }
@@ -290,21 +256,20 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
             item {
                 Text(
                     text = context.getString(com.github.kr328.clash.design.R.string.application_name),
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = MiuixTheme.textStyles.title1,
                     fontWeight = FontWeight.SemiBold,
                 )
             }
 
             item {
-                ElevatedCard(
-                    colors = CardDefaults.elevatedCardColors(
-                        containerColor = if (homeState.clashRunning) {
-                            MaterialTheme.colorScheme.primaryContainer
+                Card(
+                    colors = CardDefaults.defaultColors(
+                        color = if (homeState.clashRunning) {
+                            MiuixTheme.colorScheme.primaryContainer
                         } else {
-                            MaterialTheme.colorScheme.surfaceVariant
+                            MiuixTheme.colorScheme.surfaceContainer
                         }
                     ),
-                    shape = RoundedCornerShape(24.dp),
                 ) {
                     Column(
                         modifier = Modifier.padding(20.dp),
@@ -316,7 +281,7 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
                             } else {
                                 context.getString(com.github.kr328.clash.design.R.string.stopped)
                             },
-                            style = MaterialTheme.typography.headlineSmall,
+                            style = MiuixTheme.textStyles.title2,
                             fontWeight = FontWeight.SemiBold,
                         )
                         Text(
@@ -328,11 +293,11 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
                             } else {
                                 context.getString(com.github.kr328.clash.design.R.string.tap_to_start)
                             },
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MiuixTheme.textStyles.body1,
                         )
                         Button(onClick = { send(Request.ToggleStatus) }) {
                             Text(
-                                if (homeState.clashRunning) {
+                                text = if (homeState.clashRunning) {
                                     context.getString(com.github.kr328.clash.design.R.string.stop)
                                 } else {
                                     context.getString(com.github.kr328.clash.design.R.string.start)
@@ -397,26 +362,18 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                ModeChip(TunnelState.Mode.Rule)
-                ModeChip(TunnelState.Mode.Global)
-                ModeChip(TunnelState.Mode.Direct)
+                ModeButton(TunnelState.Mode.Rule)
+                ModeButton(TunnelState.Mode.Global)
+                ModeButton(TunnelState.Mode.Direct)
             }
 
-            ScrollableTabRow(selectedTabIndex = pagerState.currentPage) {
-                proxyGroups.forEachIndexed { index, group ->
-                    Tab(
-                        selected = pagerState.currentPage == index,
-                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                        text = {
-                            Text(
-                                text = group.name,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        },
-                    )
+            TabRow(
+                tabs = proxyGroups.map { it.name },
+                selectedTabIndex = pagerState.currentPage,
+                onTabSelected = { index ->
+                    scope.launch { pagerState.animateScrollToPage(index) }
                 }
-            }
+            )
 
             HorizontalPager(
                 state = pagerState,
@@ -432,7 +389,7 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
     }
 
     @Composable
-    private fun ModeChip(mode: TunnelState.Mode) {
+    private fun ModeButton(mode: TunnelState.Mode) {
         val label = when (mode) {
             TunnelState.Mode.Direct -> context.getString(com.github.kr328.clash.design.R.string.direct_mode)
             TunnelState.Mode.Global -> context.getString(com.github.kr328.clash.design.R.string.global_mode)
@@ -440,11 +397,23 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
             else -> context.getString(com.github.kr328.clash.design.R.string.rule_mode)
         }
 
-        FilterChip(
-            selected = overrideMode == mode,
+        Button(
             onClick = { send(Request.PatchMode(mode)) },
-            label = { Text(label) },
-        )
+            colors = ButtonDefaults.buttonColors(
+                color = if (overrideMode == mode) {
+                    MiuixTheme.colorScheme.primary
+                } else {
+                    MiuixTheme.colorScheme.surfaceContainer
+                },
+                contentColor = if (overrideMode == mode) {
+                    MiuixTheme.colorScheme.onPrimary
+                } else {
+                    MiuixTheme.colorScheme.onSurface
+                },
+            ),
+        ) {
+            Text(text = label)
+        }
     }
 
     @Composable
@@ -461,28 +430,30 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
         ) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AssistChip(
+                    Button(
                         onClick = { send(Request.UrlTest(index)) },
-                        label = {
+                    ) {
                             Text(
-                                if (group.urlTesting) {
+                                text = if (group.urlTesting) {
                                     context.getString(com.github.kr328.clash.design.R.string.loading)
                                 } else {
                                     context.getString(com.github.kr328.clash.design.R.string.delay_test)
                                 }
                             )
-                        },
-                    )
-                    AssistChip(
+                    }
+                    Button(
                         onClick = {},
-                        label = {
+                        colors = ButtonDefaults.buttonColors(
+                            color = MiuixTheme.colorScheme.surfaceContainer,
+                            contentColor = MiuixTheme.colorScheme.onSurface,
+                        ),
+                    ) {
                             Text(
                                 text = group.now,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                        },
-                    )
+                    }
                 }
             }
 
@@ -501,12 +472,11 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
     private fun ProxyItem(proxy: Proxy, selected: Boolean, selectable: Boolean, onClick: () -> Unit) {
         Card(
             onClick = onClick,
-            enabled = selectable,
-            colors = CardDefaults.cardColors(
-                containerColor = if (selected) {
-                    MaterialTheme.colorScheme.secondaryContainer
+            colors = CardDefaults.defaultColors(
+                color = if (selected) {
+                    MiuixTheme.colorScheme.secondaryContainer
                 } else {
-                    MaterialTheme.colorScheme.surface
+                    MiuixTheme.colorScheme.surfaceContainer
                 }
             ),
         ) {
@@ -524,13 +494,13 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
                 )
                 Text(
                     text = proxy.subtitle,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MiuixTheme.textStyles.body2,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = "${proxy.type} · ${proxy.delay} ms",
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MiuixTheme.textStyles.footnote1,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -559,7 +529,7 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
                         modifier = Modifier.fillMaxWidth(),
                         onClick = { send(Request.CreateProfile) },
                     ) {
-                        Text(context.getString(com.github.kr328.clash.design.R.string._new))
+                        Text(text = context.getString(com.github.kr328.clash.design.R.string._new))
                     }
                     Button(
                         modifier = Modifier.fillMaxWidth(),
@@ -569,7 +539,7 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
                             send(Request.UpdateAllProfiles)
                         },
                     ) {
-                        Text(context.getString(com.github.kr328.clash.design.R.string.update))
+                        Text(text = context.getString(com.github.kr328.clash.design.R.string.update))
                     }
                 }
             }
@@ -584,46 +554,46 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
     private fun ProfileItem(profile: Profile) {
         Card {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(profile.name, fontWeight = FontWeight.SemiBold)
-                Text(profile.type.name, style = MaterialTheme.typography.bodySmall)
+                Text(text = profile.name, fontWeight = FontWeight.SemiBold)
+                Text(text = profile.type.name, style = MiuixTheme.textStyles.body2)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         modifier = Modifier.fillMaxWidth(),
                         onClick = { send(Request.ActiveProfile(profile)) },
                     ) {
                         Text(
-                            if (profile.active) {
+                            text = if (profile.active) {
                                 context.getString(com.github.kr328.clash.design.R.string.active)
                             } else {
                                 context.getString(com.github.kr328.clash.design.R.string.activate)
                             }
                         )
                     }
-                    OutlinedButton(
+                    Button(
                         modifier = Modifier.fillMaxWidth(),
                         onClick = { send(Request.EditProfile(profile)) },
                     ) {
-                        Text(context.getString(com.github.kr328.clash.design.R.string.edit))
+                        Text(text = context.getString(com.github.kr328.clash.design.R.string.edit))
                     }
                     if (profile.imported && profile.type != Profile.Type.File) {
-                        OutlinedButton(
+                        Button(
                             modifier = Modifier.fillMaxWidth(),
                             onClick = { send(Request.UpdateProfile(profile)) },
                         ) {
-                            Text(context.getString(com.github.kr328.clash.design.R.string.update))
+                            Text(text = context.getString(com.github.kr328.clash.design.R.string.update))
                         }
                     }
-                    OutlinedButton(
+                    Button(
                         modifier = Modifier.fillMaxWidth(),
                         onClick = { send(Request.DuplicateProfile(profile)) },
                     ) {
-                        Text(context.getString(com.github.kr328.clash.design.R.string.duplicate))
+                        Text(text = context.getString(com.github.kr328.clash.design.R.string.duplicate))
                     }
-                    OutlinedButton(
+                    Button(
                         modifier = Modifier.fillMaxWidth(),
                         onClick = { send(Request.DeleteProfile(profile)) },
                     ) {
-                        Text(context.getString(com.github.kr328.clash.design.R.string.delete))
+                        Text(text = context.getString(com.github.kr328.clash.design.R.string.delete))
                     }
                 }
             }
@@ -681,19 +651,18 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
     private fun PageHeader(title: String) {
         Text(
             text = title,
-            style = MaterialTheme.typography.headlineSmall,
+            style = MiuixTheme.textStyles.title2,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(bottom = 8.dp),
         )
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun InfoCard(title: String, summary: String, onClick: () -> Unit) {
         Card(onClick = onClick) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(title, fontWeight = FontWeight.SemiBold)
-                Text(summary, style = MaterialTheme.typography.bodyMedium)
+                Text(text = title, fontWeight = FontWeight.SemiBold)
+                Text(text = summary, style = MiuixTheme.textStyles.body1)
             }
         }
     }
@@ -703,14 +672,17 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
         SettingsItem(title = title, onClick = onClick)
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun SettingsItem(title: String, onClick: () -> Unit) {
         Surface(onClick = onClick) {
-            ListItem(
-                headlineContent = { Text(title) },
-                leadingContent = { Icon(Icons.Default.Dns, contentDescription = null) },
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(text = title, style = MiuixTheme.textStyles.body1)
+            }
         }
         HorizontalDivider()
     }
@@ -729,7 +701,7 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             PageHeader(title)
-            Text(summary, style = MaterialTheme.typography.bodyMedium)
+            Text(text = summary, style = MiuixTheme.textStyles.body1)
         }
     }
 

@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -18,22 +19,11 @@ import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Update
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.ComposeView
@@ -50,11 +40,21 @@ import com.github.kr328.clash.design.util.ValidatorAutoUpdateInterval
 import com.github.kr328.clash.design.util.ValidatorHttpUrl
 import com.github.kr328.clash.design.util.ValidatorNotBlank
 import com.github.kr328.clash.service.model.Profile
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.github.kr328.clash.ui.ClashMiuixDialog
+import com.github.kr328.clash.ui.ClashMiuixTheme
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 
@@ -68,11 +68,12 @@ class PropertiesComposeDesign(context: Context) : Design<PropertiesComposeDesign
 
     var progressing by mutableStateOf(false)
         private set
+    private var exitConfirm by mutableStateOf<CancellableContinuation<Boolean>?>(null)
 
     override val root = ComposeView(context).apply {
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
         setContent {
-            PageTheme {
+            ClashMiuixTheme {
                 PageContent()
             }
         }
@@ -102,16 +103,8 @@ class PropertiesComposeDesign(context: Context) : Design<PropertiesComposeDesign
     suspend fun requestExitWithoutSaving(): Boolean {
         return withContext(Dispatchers.Main) {
             suspendCancellableCoroutine { ctx ->
-                val dialog = MaterialAlertDialogBuilder(context)
-                    .setTitle(com.github.kr328.clash.design.R.string.exit_without_save)
-                    .setMessage(com.github.kr328.clash.design.R.string.exit_without_save_warning)
-                    .setCancelable(true)
-                    .setPositiveButton(com.github.kr328.clash.design.R.string.ok) { _, _ -> ctx.resume(true) }
-                    .setNegativeButton(com.github.kr328.clash.design.R.string.cancel) { _, _ -> }
-                    .setOnDismissListener { if (!ctx.isCompleted) ctx.resume(false) }
-                    .show()
-
-                ctx.invokeOnCancellation { dialog.dismiss() }
+                exitConfirm = ctx
+                ctx.invokeOnCancellation { exitConfirm = null }
             }
         }
     }
@@ -204,23 +197,11 @@ class PropertiesComposeDesign(context: Context) : Design<PropertiesComposeDesign
     }
 
     @Composable
-    private fun PageTheme(content: @Composable () -> Unit) {
-        val colors = if (androidx.compose.foundation.isSystemInDarkTheme()) {
-            darkColorScheme()
-        } else {
-            lightColorScheme()
-        }
-
-        MaterialTheme(colorScheme = colors, content = content)
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
     private fun PageContent() {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text(context.getString(com.github.kr328.clash.design.R.string.properties)) },
+                    title = context.getString(com.github.kr328.clash.design.R.string.properties),
                     navigationIcon = {
                         IconButton(onClick = { (context as? Activity)?.onBackPressed() }) {
                             Icon(
@@ -247,6 +228,8 @@ class PropertiesComposeDesign(context: Context) : Design<PropertiesComposeDesign
                 )
             },
         ) { innerPadding ->
+            ExitConfirmDialog()
+
             val current = profile
 
             if (current != null) {
@@ -267,8 +250,7 @@ class PropertiesComposeDesign(context: Context) : Design<PropertiesComposeDesign
                     Text(
                         text = context.getString(com.github.kr328.clash.design.R.string.tips_properties)
                             .replace(Regex("<[^>]+>"), ""),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
                     )
                     FieldItem(
                         icon = Icons.Default.Label,
@@ -316,7 +298,28 @@ class PropertiesComposeDesign(context: Context) : Design<PropertiesComposeDesign
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    private fun ExitConfirmDialog() {
+        val continuation = exitConfirm ?: return
+
+        ClashMiuixDialog(
+            title = context.getString(com.github.kr328.clash.design.R.string.exit_without_save),
+            message = context.getString(com.github.kr328.clash.design.R.string.exit_without_save_warning),
+            confirmText = context.getString(com.github.kr328.clash.design.R.string.ok),
+            onConfirm = { finishExitConfirm(continuation, true) },
+            dismissText = context.getString(com.github.kr328.clash.design.R.string.cancel),
+            onDismissButton = { finishExitConfirm(continuation, false) },
+            onDismissRequest = { finishExitConfirm(continuation, false) },
+        )
+    }
+
+    private fun finishExitConfirm(continuation: CancellableContinuation<Boolean>, confirmed: Boolean) {
+        exitConfirm = null
+        if (!continuation.isCompleted) {
+            continuation.resume(confirmed)
+        }
+    }
+
     @Composable
     private fun FieldItem(
         icon: ImageVector,
@@ -327,20 +330,29 @@ class PropertiesComposeDesign(context: Context) : Design<PropertiesComposeDesign
     ) {
         Card(
             modifier = Modifier.fillMaxWidth(),
-            enabled = enabled,
-            onClick = onClick,
+            onClick = if (enabled) onClick else null,
         ) {
-            ListItem(
-                leadingContent = {
-                    Icon(imageVector = icon, contentDescription = null)
-                },
-                headlineContent = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(imageVector = icon, contentDescription = null)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
                     Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                },
-                supportingContent = {
-                    Text(value, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                },
-            )
+                    Text(
+                        text = value,
+                        color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
     }
 

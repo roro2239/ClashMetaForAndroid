@@ -16,32 +16,15 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,9 +34,24 @@ import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.design.Design
 import com.github.kr328.clash.design.model.ProxyState
 import com.github.kr328.clash.design.store.UiStore
+import com.github.kr328.clash.ui.ClashMiuixDialog
+import com.github.kr328.clash.ui.ClashMiuixMenuItem
+import com.github.kr328.clash.ui.ClashMiuixTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.basic.Checkbox
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.TabRow
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 class ProxyComposeDesign(
     context: Context,
@@ -87,7 +85,7 @@ class ProxyComposeDesign(
     override val root = ComposeView(context).apply {
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
         setContent {
-            PageTheme {
+            ClashMiuixTheme {
                 PageContent()
             }
         }
@@ -129,23 +127,11 @@ class ProxyComposeDesign(
     }
 
     @Composable
-    private fun PageTheme(content: @Composable () -> Unit) {
-        val colors = if (androidx.compose.foundation.isSystemInDarkTheme()) {
-            darkColorScheme()
-        } else {
-            lightColorScheme()
-        }
-
-        MaterialTheme(colorScheme = colors, content = content)
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
     private fun PageContent() {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text(context.getString(com.github.kr328.clash.design.R.string.proxy)) },
+                    title = context.getString(com.github.kr328.clash.design.R.string.proxy),
                     navigationIcon = {
                         IconButton(onClick = { (context as? Activity)?.onBackPressed() }) {
                             Icon(
@@ -156,7 +142,10 @@ class ProxyComposeDesign(
                     },
                     actions = {
                         IconButton(onClick = { menuExpanded = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = context.getString(com.github.kr328.clash.design.R.string.properties))
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = context.getString(com.github.kr328.clash.design.R.string.properties),
+                            )
                         }
                         ProxyMenu()
                     },
@@ -202,20 +191,15 @@ class ProxyComposeDesign(
                 ModeChip(TunnelState.Mode.Global)
                 ModeChip(TunnelState.Mode.Direct)
             }
-            ScrollableTabRow(selectedTabIndex = pagerState.currentPage) {
-                groups.forEachIndexed { index, group ->
-                    Tab(
-                        selected = pagerState.currentPage == index,
-                        onClick = {
-                            uiStore.proxyLastGroup = group.name
-                            scope.launch { pagerState.animateScrollToPage(index) }
-                        },
-                        text = {
-                            Text(group.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        },
-                    )
+            TabRow(
+                tabs = groups.map { it.name },
+                selectedTabIndex = pagerState.currentPage,
+                onTabSelected = { index ->
+                    val group = groups[index]
+                    uiStore.proxyLastGroup = group.name
+                    scope.launch { pagerState.animateScrollToPage(index) }
                 }
-            }
+            )
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
@@ -235,14 +219,26 @@ class ProxyComposeDesign(
             else -> context.getString(com.github.kr328.clash.design.R.string.rule_mode)
         }
 
-        FilterChip(
-            selected = overrideMode == mode,
-            onClick = {
-                overrideMode = mode
-                requests.trySend(Request.PatchMode(mode))
-            },
-            label = { Text(label) },
-        )
+        val onClick = {
+            overrideMode = mode
+            requests.trySend(Request.PatchMode(mode))
+            Unit
+        }
+
+        if (overrideMode == mode) {
+            Button(
+                onClick = onClick,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        } else {
+            TextButton(
+                text = label,
+                onClick = onClick,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 
     @Composable
@@ -259,27 +255,36 @@ class ProxyComposeDesign(
         ) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AssistChip(
+                    Button(
                         onClick = {
                             groups = groups.mapIndexed { i, item ->
                                 if (i == index) item.copy(urlTesting = true) else item
                             }
                             requests.trySend(Request.UrlTest(index))
                         },
-                        label = {
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            if (group.urlTesting) {
+                                context.getString(com.github.kr328.clash.design.R.string.loading)
+                            } else {
+                                context.getString(com.github.kr328.clash.design.R.string.delay_test)
+                            },
+                        )
+                    }
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        ) {
                             Text(
-                                if (group.urlTesting) {
-                                    context.getString(com.github.kr328.clash.design.R.string.loading)
-                                } else {
-                                    context.getString(com.github.kr328.clash.design.R.string.delay_test)
-                                },
+                                text = group.now,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
-                        },
-                    )
-                    AssistChip(
-                        onClick = {},
-                        label = { Text(group.now, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    )
+                        }
+                    }
                 }
             }
             items(group.proxies, key = { it.name }) { proxy ->
@@ -298,17 +303,16 @@ class ProxyComposeDesign(
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun ProxyItem(proxy: Proxy, selected: Boolean, selectable: Boolean, onClick: () -> Unit) {
         Card(
-            onClick = onClick,
-            enabled = selectable,
-            colors = CardDefaults.cardColors(
-                containerColor = if (selected) {
-                    MaterialTheme.colorScheme.secondaryContainer
+            modifier = Modifier.fillMaxWidth(),
+            onClick = if (selectable) onClick else null,
+            colors = CardDefaults.defaultColors(
+                color = if (selected) {
+                    MiuixTheme.colorScheme.secondaryContainer
                 } else {
-                    MaterialTheme.colorScheme.surface
+                    MiuixTheme.colorScheme.surfaceContainer
                 },
             ),
         ) {
@@ -326,13 +330,13 @@ class ProxyComposeDesign(
                 )
                 Text(
                     text = proxy.subtitle,
-                    style = MaterialTheme.typography.bodySmall,
+                    color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = "${proxy.type} · ${proxy.delay} ms",
-                    style = MaterialTheme.typography.labelMedium,
+                    color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -342,10 +346,20 @@ class ProxyComposeDesign(
 
     @Composable
     private fun ProxyMenu() {
-        DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-            DropdownMenuItem(
-                text = { Text(context.getString(com.github.kr328.clash.design.R.string.not_selectable)) },
-                trailingIcon = { Checkbox(checked = uiStore.proxyExcludeNotSelectable, onCheckedChange = null) },
+        if (!menuExpanded) return
+
+        ClashMiuixDialog(
+            title = context.getString(com.github.kr328.clash.design.R.string.properties),
+            onDismissRequest = { menuExpanded = false },
+        ) {
+            ClashMiuixMenuItem(
+                title = context.getString(com.github.kr328.clash.design.R.string.not_selectable),
+                trailingContent = {
+                    Checkbox(
+                        state = if (uiStore.proxyExcludeNotSelectable) ToggleableState.On else ToggleableState.Off,
+                        onClick = null,
+                    )
+                },
                 onClick = {
                     uiStore.proxyExcludeNotSelectable = !uiStore.proxyExcludeNotSelectable
                     sendMenuRequest(Request.ReLaunch)
@@ -362,9 +376,14 @@ class ProxyComposeDesign(
 
     @Composable
     private fun ProxyLineItem(line: Int, title: Int) {
-        DropdownMenuItem(
-            text = { Text(context.getString(title)) },
-            trailingIcon = { Checkbox(checked = uiStore.proxyLine == line, onCheckedChange = null) },
+        ClashMiuixMenuItem(
+            title = context.getString(title),
+            trailingContent = {
+                Checkbox(
+                    state = if (uiStore.proxyLine == line) ToggleableState.On else ToggleableState.Off,
+                    onClick = null,
+                )
+            },
             onClick = {
                 uiStore.proxyLine = line
                 sendMenuRequest(Request.ReloadAll)
@@ -374,9 +393,14 @@ class ProxyComposeDesign(
 
     @Composable
     private fun ProxySortItem(sort: ProxySort, title: Int) {
-        DropdownMenuItem(
-            text = { Text(context.getString(title)) },
-            trailingIcon = { Checkbox(checked = uiStore.proxySort == sort, onCheckedChange = null) },
+        ClashMiuixMenuItem(
+            title = context.getString(title),
+            trailingContent = {
+                Checkbox(
+                    state = if (uiStore.proxySort == sort) ToggleableState.On else ToggleableState.Off,
+                    onClick = null,
+                )
+            },
             onClick = {
                 uiStore.proxySort = sort
                 sendMenuRequest(Request.ReloadAll)

@@ -3,25 +3,13 @@ package com.github.kr328.clash
 import android.app.Activity
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -35,6 +23,18 @@ import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.core.model.Provider
 import com.github.kr328.clash.design.Design
 import com.github.kr328.clash.design.util.elapsedIntervalString
+import com.github.kr328.clash.ui.ClashMiuixTheme
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Refresh
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 class ProvidersComposeDesign(
     context: Context,
@@ -58,7 +58,7 @@ class ProvidersComposeDesign(
     override val root = ComposeView(context).apply {
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
         setContent {
-            PageTheme {
+            ClashMiuixTheme {
                 PageContent()
             }
         }
@@ -96,27 +96,15 @@ class ProvidersComposeDesign(
     }
 
     @Composable
-    private fun PageTheme(content: @Composable () -> Unit) {
-        val colors = if (androidx.compose.foundation.isSystemInDarkTheme()) {
-            darkColorScheme()
-        } else {
-            lightColorScheme()
-        }
-
-        MaterialTheme(colorScheme = colors, content = content)
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
     private fun PageContent() {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text(context.getString(com.github.kr328.clash.design.R.string.providers)) },
+                    title = context.getString(com.github.kr328.clash.design.R.string.providers),
                     navigationIcon = {
                         IconButton(onClick = { (context as? Activity)?.onBackPressed() }) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = MiuixIcons.Back,
                                 contentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
                             )
                         }
@@ -124,7 +112,7 @@ class ProvidersComposeDesign(
                     actions = {
                         IconButton(onClick = { requestUpdateAll() }) {
                             Icon(
-                                imageVector = Icons.Default.Sync,
+                                imageVector = MiuixIcons.Refresh,
                                 contentDescription = context.getString(com.github.kr328.clash.design.R.string.update),
                             )
                         }
@@ -152,43 +140,46 @@ class ProvidersComposeDesign(
     @Composable
     private fun ProviderItem(index: Int, state: ProviderItemState) {
         Card {
-            ListItem(
-                headlineContent = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
                         text = state.provider.name,
+                        style = MiuixTheme.textStyles.body1,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                },
-                supportingContent = {
                     Text(
                         text = providerSummary(state),
+                        style = MiuixTheme.textStyles.body2,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
-                },
-                trailingContent = {
-                    if (state.provider.vehicleType != Provider.VehicleType.Inline) {
-                        Button(
-                            enabled = !state.updating,
-                            onClick = {
-                                providers = providers.mapIndexed { i, item ->
-                                    if (i == index) item.copy(updating = true) else item
-                                }
-                                requests.trySend(Request.Update(index, state.provider))
-                            },
-                        ) {
-                            Text(
-                                if (state.updating) {
-                                    context.getString(com.github.kr328.clash.design.R.string.loading)
-                                } else {
-                                    context.getString(com.github.kr328.clash.design.R.string.update)
-                                }
-                            )
-                        }
+                }
+                if (state.provider.vehicleType != Provider.VehicleType.Inline) {
+                    Button(
+                        enabled = !state.updating,
+                        onClick = {
+                            providers = providers.mapIndexed { i, item ->
+                                if (i == index) item.copy(updating = true) else item
+                            }
+                            requests.trySend(Request.Update(index, state.provider))
+                        },
+                    ) {
+                        Text(
+                            text = if (state.updating) {
+                                context.getString(com.github.kr328.clash.design.R.string.loading)
+                            } else {
+                                context.getString(com.github.kr328.clash.design.R.string.update)
+                            }
+                        )
                     }
-                },
-            )
+                }
+            }
         }
     }
 

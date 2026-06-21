@@ -55,7 +55,7 @@ subprojects {
                 else "com.github.kr328.clash.$name"
             }
 
-            minSdk = 21
+            minSdk = 33
             targetSdk = 35
 
             versionName = "2.11.30"
@@ -83,7 +83,7 @@ subprojects {
 
         ndkVersion = "29.0.14206865"
 
-        compileSdkVersion(defaultConfig.targetSdk!!)
+        compileSdkVersion(37)
 
         if (isApp) {
             packagingOptions {

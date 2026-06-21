@@ -6,28 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Brightness4
-import androidx.compose.material.icons.filled.Domain
-import androidx.compose.material.icons.filled.Restore
-import androidx.compose.material.icons.filled.StackedBarChart
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,13 +14,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.Design
 import com.github.kr328.clash.design.model.Behavior
 import com.github.kr328.clash.design.model.DarkMode
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.ui.ClashMiuixDialog
+import com.github.kr328.clash.ui.ClashMiuixTheme
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Hide
+import top.yukonga.miuix.kmp.icon.extended.Recent
+import top.yukonga.miuix.kmp.icon.extended.Reset
+import top.yukonga.miuix.kmp.icon.extended.Settings
+import top.yukonga.miuix.kmp.icon.extended.Theme
+import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.preference.RadioButtonPreference
+import top.yukonga.miuix.kmp.preference.SwitchPreference
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 class AppSettingsComposeDesign(
     context: Context,
@@ -66,34 +61,22 @@ class AppSettingsComposeDesign(
     override val root = ComposeView(context).apply {
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
         setContent {
-            PageTheme {
+            ClashMiuixTheme {
                 PageContent()
             }
         }
     }
 
     @Composable
-    private fun PageTheme(content: @Composable () -> Unit) {
-        val colors = if (androidx.compose.foundation.isSystemInDarkTheme()) {
-            darkColorScheme()
-        } else {
-            lightColorScheme()
-        }
-
-        MaterialTheme(colorScheme = colors, content = content)
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
     private fun PageContent() {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text(context.getString(com.github.kr328.clash.design.R.string.app)) },
+                    title = context.getString(com.github.kr328.clash.design.R.string.app),
                     navigationIcon = {
                         IconButton(onClick = { (context as? Activity)?.onBackPressed() }) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = MiuixIcons.Back,
                                 contentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
                             )
                         }
@@ -114,7 +97,7 @@ class AppSettingsComposeDesign(
                 item { CategoryTitle(context.getString(com.github.kr328.clash.design.R.string.behavior)) }
                 item {
                     SwitchItem(
-                        icon = Icons.Default.Restore,
+                        icon = MiuixIcons.Reset,
                         title = context.getString(com.github.kr328.clash.design.R.string.auto_restart),
                         summary = context.getString(com.github.kr328.clash.design.R.string.allow_clash_auto_restart),
                         checked = autoRestart,
@@ -126,7 +109,7 @@ class AppSettingsComposeDesign(
                 item { CategoryTitle(context.getString(com.github.kr328.clash.design.R.string.interface_)) }
                 item {
                     ClickItem(
-                        icon = Icons.Default.Brightness4,
+                        icon = MiuixIcons.Theme,
                         title = context.getString(com.github.kr328.clash.design.R.string.dark_mode),
                         summary = darkModeText(darkMode),
                     ) {
@@ -135,7 +118,7 @@ class AppSettingsComposeDesign(
                 }
                 item {
                     SwitchItem(
-                        icon = Icons.Default.VisibilityOff,
+                        icon = MiuixIcons.Hide,
                         title = context.getString(com.github.kr328.clash.design.R.string.hide_app_icon_title),
                         summary = context.getString(com.github.kr328.clash.design.R.string.hide_app_icon_desc),
                         checked = hideAppIcon,
@@ -147,7 +130,7 @@ class AppSettingsComposeDesign(
                 }
                 item {
                     SwitchItem(
-                        icon = Icons.Default.StackedBarChart,
+                        icon = MiuixIcons.Recent,
                         title = context.getString(com.github.kr328.clash.design.R.string.hide_from_recents_title),
                         summary = context.getString(com.github.kr328.clash.design.R.string.hide_from_recents_desc),
                         checked = hideFromRecents,
@@ -160,7 +143,7 @@ class AppSettingsComposeDesign(
                 item { CategoryTitle(context.getString(com.github.kr328.clash.design.R.string.service)) }
                 item {
                     SwitchItem(
-                        icon = Icons.Default.Domain,
+                        icon = MiuixIcons.Settings,
                         title = context.getString(com.github.kr328.clash.design.R.string.show_traffic),
                         summary = context.getString(com.github.kr328.clash.design.R.string.show_traffic_summary),
                         checked = dynamicNotification,
@@ -182,49 +165,40 @@ class AppSettingsComposeDesign(
     private fun DarkModeDialog() {
         val values = DarkMode.values()
 
-        AlertDialog(
+        ClashMiuixDialog(
+            title = context.getString(com.github.kr328.clash.design.R.string.dark_mode),
+            dismissText = context.getString(com.github.kr328.clash.design.R.string.cancel),
+            onDismissButton = { showDarkModeDialog = false },
             onDismissRequest = { showDarkModeDialog = false },
-            confirmButton = {
-                TextButton(onClick = { showDarkModeDialog = false }) {
-                    Text(context.getString(com.github.kr328.clash.design.R.string.cancel))
-                }
-            },
-            title = { Text(context.getString(com.github.kr328.clash.design.R.string.dark_mode)) },
-            text = {
-                LazyColumn {
-                    items(values.size) { index ->
-                        val value = values[index]
+        ) {
+            LazyColumn {
+                items(values.size) { index ->
+                    val value = values[index]
 
-                        ListItem(
-                            headlineContent = { Text(darkModeText(value)) },
-                            trailingContent = {
-                                RadioButton(
-                                    selected = darkMode == value,
-                                    onClick = {
-                                        darkMode = value
-                                        uiStore.darkMode = value
-                                        showDarkModeDialog = false
-                                        requests.trySend(Request.ReCreateAllActivities)
-                                    },
-                                )
-                            },
-                        )
-                    }
+                    RadioButtonPreference(
+                        title = darkModeText(value),
+                        selected = darkMode == value,
+                        onClick = {
+                            darkMode = value
+                            uiStore.darkMode = value
+                            showDarkModeDialog = false
+                            requests.trySend(Request.ReCreateAllActivities)
+                        },
+                    )
                 }
-            },
-        )
+            }
+        }
     }
 
     @Composable
     private fun CategoryTitle(title: String) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.primary,
+            style = MiuixTheme.textStyles.title4,
+            color = MiuixTheme.colorScheme.primary,
         )
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun SwitchItem(
         icon: ImageVector,
@@ -234,26 +208,16 @@ class AppSettingsComposeDesign(
         enabled: Boolean = true,
         onChanged: (Boolean) -> Unit,
     ) {
-        Card(
+        SwitchPreference(
+            checked = checked,
+            onCheckedChange = onChanged,
+            title = title,
+            summary = summary,
             enabled = enabled,
-            onClick = { onChanged(!checked) },
-        ) {
-            ListItem(
-                leadingContent = { Icon(icon, contentDescription = null) },
-                headlineContent = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                supportingContent = { Text(summary, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-                trailingContent = {
-                    Switch(
-                        checked = checked,
-                        enabled = enabled,
-                        onCheckedChange = onChanged,
-                    )
-                },
-            )
-        }
+            startAction = { Icon(icon, contentDescription = null) },
+        )
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun ClickItem(
         icon: ImageVector,
@@ -261,13 +225,12 @@ class AppSettingsComposeDesign(
         summary: String,
         onClick: () -> Unit,
     ) {
-        Card(onClick = onClick) {
-            ListItem(
-                leadingContent = { Icon(icon, contentDescription = null) },
-                headlineContent = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                supportingContent = { Text(summary, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-            )
-        }
+        ArrowPreference(
+            title = title,
+            summary = summary,
+            startAction = { Icon(icon, contentDescription = null) },
+            onClick = onClick,
+        )
     }
 
     private fun darkModeText(value: DarkMode): String {

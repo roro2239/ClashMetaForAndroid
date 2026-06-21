@@ -8,7 +8,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.util.clashDir
 import com.github.kr328.clash.util.withClash
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select
@@ -98,12 +97,14 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsComposeDesig
                 val ext = "." + displayName.substringAfterLast(".")
 
                 if (!validDatabaseExtensions.contains(ext)) {
-                    MaterialAlertDialogBuilder(this)
-                        .setTitle(R.string.geofile_unknown_db_format)
-                        .setMessage(getString(R.string.geofile_unknown_db_format_message,
-                            validDatabaseExtensions.joinToString("/")))
-                        .setPositiveButton("OK") { _, _ -> }
-                        .show()
+                    Toast.makeText(
+                        this,
+                        getString(
+                            R.string.geofile_unknown_db_format_message,
+                            validDatabaseExtensions.joinToString("/"),
+                        ),
+                        Toast.LENGTH_LONG,
+                    ).show()
                     return
                 }
                 val outputFileName = when (importType) {

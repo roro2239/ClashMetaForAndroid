@@ -3,27 +3,14 @@ package com.github.kr328.clash
 import android.app.Activity
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Public
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,10 +18,25 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.Design
 import com.github.kr328.clash.design.model.ProfileProvider
+import com.github.kr328.clash.ui.ClashMiuixTheme
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.File
+import top.yukonga.miuix.kmp.icon.extended.Forward
+import top.yukonga.miuix.kmp.icon.extended.Link
+import top.yukonga.miuix.kmp.icon.extended.Scan
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 class NewProfileComposeDesign(context: Context) : Design<NewProfileComposeDesign.Request>(context) {
     sealed class Request {
@@ -48,7 +50,7 @@ class NewProfileComposeDesign(context: Context) : Design<NewProfileComposeDesign
     override val root = ComposeView(context).apply {
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
         setContent {
-            PageTheme {
+            ClashMiuixTheme {
                 PageContent()
             }
         }
@@ -59,27 +61,15 @@ class NewProfileComposeDesign(context: Context) : Design<NewProfileComposeDesign
     }
 
     @Composable
-    private fun PageTheme(content: @Composable () -> Unit) {
-        val colors = if (androidx.compose.foundation.isSystemInDarkTheme()) {
-            darkColorScheme()
-        } else {
-            lightColorScheme()
-        }
-
-        MaterialTheme(colorScheme = colors, content = content)
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
     private fun PageContent() {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text(context.getString(com.github.kr328.clash.design.R.string.new_profile)) },
+                    title = context.getString(com.github.kr328.clash.design.R.string.new_profile),
                     navigationIcon = {
                         IconButton(onClick = { (context as? Activity)?.onBackPressed() }) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = MiuixIcons.Back,
                                 contentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
                             )
                         }
@@ -104,38 +94,50 @@ class NewProfileComposeDesign(context: Context) : Design<NewProfileComposeDesign
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun ProviderItem(provider: ProfileProvider) {
         Card(onClick = { requestCreate(provider) }) {
-            ListItem(
-                leadingContent = {
-                    Icon(
-                        imageVector = when (provider) {
-                            is ProfileProvider.File -> Icons.Default.FolderOpen
-                            is ProfileProvider.QR -> Icons.Default.QrCodeScanner
-                            else -> Icons.Default.Public
-                        },
-                        contentDescription = null,
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Icon(
+                    imageVector = when (provider) {
+                        is ProfileProvider.File -> MiuixIcons.File
+                        is ProfileProvider.QR -> MiuixIcons.Scan
+                        else -> MiuixIcons.Link
+                    },
+                    contentDescription = null,
+                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = provider.name,
+                        style = MiuixTheme.textStyles.body1,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
-                },
-                headlineContent = {
-                    Text(provider.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                },
-                supportingContent = {
-                    Text(provider.summary, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                },
-                trailingContent = {
-                    if (provider is ProfileProvider.External) {
-                        IconButton(onClick = { requests.trySend(Request.OpenDetail(provider)) }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                contentDescription = context.getString(com.github.kr328.clash.design.R.string.properties),
-                            )
-                        }
+                    Text(
+                        text = provider.summary,
+                        style = MiuixTheme.textStyles.body2,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (provider is ProfileProvider.External) {
+                    IconButton(onClick = { requests.trySend(Request.OpenDetail(provider)) }) {
+                        Icon(
+                            imageVector = MiuixIcons.Forward,
+                            contentDescription = context.getString(com.github.kr328.clash.design.R.string.properties),
+                        )
                     }
-                },
-            )
+                }
+            }
         }
     }
 

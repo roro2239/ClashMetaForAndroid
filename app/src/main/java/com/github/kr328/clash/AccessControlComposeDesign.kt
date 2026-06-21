@@ -3,8 +3,12 @@ package com.github.kr328.clash
 import android.app.Activity
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -15,40 +19,36 @@ import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.Design
 import com.github.kr328.clash.design.model.AppInfo
 import com.github.kr328.clash.design.model.AppInfoSort
 import com.github.kr328.clash.design.store.UiStore
+import com.github.kr328.clash.ui.ClashMiuixDialog
+import com.github.kr328.clash.ui.ClashMiuixMenuItem
+import com.github.kr328.clash.ui.ClashMiuixTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.Checkbox
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Switch
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextField
+import top.yukonga.miuix.kmp.basic.TopAppBar
 
 class AccessControlComposeDesign(
     context: Context,
@@ -75,7 +75,7 @@ class AccessControlComposeDesign(
     override val root = ComposeView(context).apply {
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
         setContent {
-            PageTheme {
+            ClashMiuixTheme {
                 PageContent()
             }
         }
@@ -94,23 +94,11 @@ class AccessControlComposeDesign(
     }
 
     @Composable
-    private fun PageTheme(content: @Composable () -> Unit) {
-        val colors = if (androidx.compose.foundation.isSystemInDarkTheme()) {
-            darkColorScheme()
-        } else {
-            lightColorScheme()
-        }
-
-        MaterialTheme(colorScheme = colors, content = content)
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
     private fun PageContent() {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text(context.getString(com.github.kr328.clash.design.R.string.access_control_packages)) },
+                    title = context.getString(com.github.kr328.clash.design.R.string.access_control_packages),
                     navigationIcon = {
                         IconButton(onClick = { (context as? Activity)?.onBackPressed() }) {
                             Icon(
@@ -171,12 +159,12 @@ class AccessControlComposeDesign(
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun AppItem(app: AppInfo, version: Int) {
         val checked = app.packageName in selected
 
         Card(
+            modifier = Modifier.fillMaxWidth(),
             onClick = {
                 if (checked) {
                     selected.remove(app.packageName)
@@ -186,48 +174,64 @@ class AccessControlComposeDesign(
                 selectedVersion = version + 1
             },
         ) {
-            ListItem(
-                leadingContent = {
-                    Icon(Icons.Default.Apps, contentDescription = null)
-                },
-                headlineContent = {
-                    Text(app.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                },
-                supportingContent = {
-                    Text(app.packageName, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                },
-                trailingContent = {
-                    Checkbox(
-                        checked = checked,
-                        onCheckedChange = null,
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Apps,
+                    contentDescription = null,
+                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = app.label,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
-                },
-            )
+                    Text(
+                        text = app.packageName,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Checkbox(
+                    state = if (checked) ToggleableState.On else ToggleableState.Off,
+                    onClick = null,
+                )
+            }
         }
     }
 
     @Composable
     private fun AccessControlMenu() {
-        DropdownMenu(
-            expanded = menuExpanded,
+        if (!menuExpanded) return
+
+        ClashMiuixDialog(
+            title = context.getString(com.github.kr328.clash.design.R.string.properties),
             onDismissRequest = { menuExpanded = false },
         ) {
-            DropdownMenuItem(
-                text = { Text(context.getString(com.github.kr328.clash.design.R.string.select_all)) },
+            ClashMiuixMenuItem(
+                title = context.getString(com.github.kr328.clash.design.R.string.select_all),
                 onClick = { sendMenuRequest(Request.SelectAll) },
             )
-            DropdownMenuItem(
-                text = { Text(context.getString(com.github.kr328.clash.design.R.string.select_none)) },
+            ClashMiuixMenuItem(
+                title = context.getString(com.github.kr328.clash.design.R.string.select_none),
                 onClick = { sendMenuRequest(Request.SelectNone) },
             )
-            DropdownMenuItem(
-                text = { Text(context.getString(com.github.kr328.clash.design.R.string.select_invert)) },
+            ClashMiuixMenuItem(
+                title = context.getString(com.github.kr328.clash.design.R.string.select_invert),
                 onClick = { sendMenuRequest(Request.SelectInvert) },
             )
-            DropdownMenuItem(
-                text = { Text(context.getString(com.github.kr328.clash.design.R.string.system_apps)) },
-                leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = null) },
-                trailingIcon = {
+            ClashMiuixMenuItem(
+                title = context.getString(com.github.kr328.clash.design.R.string.system_apps),
+                leadingContent = { Icon(Icons.Default.FilterList, contentDescription = null) },
+                trailingContent = {
                     Switch(
                         checked = uiStore.accessControlSystemApp,
                         onCheckedChange = null,
@@ -242,9 +246,9 @@ class AccessControlComposeDesign(
             SortItem(AppInfoSort.PackageName, com.github.kr328.clash.design.R.string.package_name)
             SortItem(AppInfoSort.InstallTime, com.github.kr328.clash.design.R.string.install_time)
             SortItem(AppInfoSort.UpdateTime, com.github.kr328.clash.design.R.string.update_time)
-            DropdownMenuItem(
-                text = { Text(context.getString(com.github.kr328.clash.design.R.string.reverse)) },
-                trailingIcon = {
+            ClashMiuixMenuItem(
+                title = context.getString(com.github.kr328.clash.design.R.string.reverse),
+                trailingContent = {
                     Switch(
                         checked = uiStore.accessControlReverse,
                         onCheckedChange = null,
@@ -255,14 +259,14 @@ class AccessControlComposeDesign(
                     sendMenuRequest(Request.ReloadApps)
                 },
             )
-            DropdownMenuItem(
-                text = { Text(context.getString(com.github.kr328.clash.design.R.string.import_from_clipboard)) },
-                leadingIcon = { Icon(Icons.Default.ContentPaste, contentDescription = null) },
+            ClashMiuixMenuItem(
+                title = context.getString(com.github.kr328.clash.design.R.string.import_from_clipboard),
+                leadingContent = { Icon(Icons.Default.ContentPaste, contentDescription = null) },
                 onClick = { sendMenuRequest(Request.Import) },
             )
-            DropdownMenuItem(
-                text = { Text(context.getString(com.github.kr328.clash.design.R.string.export_to_clipboard)) },
-                leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
+            ClashMiuixMenuItem(
+                title = context.getString(com.github.kr328.clash.design.R.string.export_to_clipboard),
+                leadingContent = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
                 onClick = { sendMenuRequest(Request.Export) },
             )
         }
@@ -270,12 +274,12 @@ class AccessControlComposeDesign(
 
     @Composable
     private fun SortItem(sort: AppInfoSort, title: Int) {
-        DropdownMenuItem(
-            text = { Text(context.getString(title)) },
-            trailingIcon = {
+        ClashMiuixMenuItem(
+            title = context.getString(title),
+            trailingContent = {
                 Checkbox(
-                    checked = uiStore.accessControlSort == sort,
-                    onCheckedChange = null,
+                    state = if (uiStore.accessControlSort == sort) ToggleableState.On else ToggleableState.Off,
+                    onClick = null,
                 )
             },
             onClick = {
@@ -296,32 +300,28 @@ class AccessControlComposeDesign(
             }
         }
 
-        AlertDialog(
+        ClashMiuixDialog(
+            title = context.getString(com.github.kr328.clash.design.R.string.search),
+            confirmText = context.getString(com.github.kr328.clash.design.R.string.close),
+            onConfirm = { closeSearch() },
             onDismissRequest = { closeSearch() },
-            confirmButton = {
-                TextButton(onClick = { closeSearch() }) {
-                    Text(context.getString(com.github.kr328.clash.design.R.string.close))
+        ) {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                item {
+                    TextField(
+                        value = keyword,
+                        onValueChange = { keyword = it },
+                        singleLine = true,
+                        label = context.getString(com.github.kr328.clash.design.R.string.search),
+                    )
                 }
-            },
-            title = { Text(context.getString(com.github.kr328.clash.design.R.string.search)) },
-            text = {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    item {
-                        TextField(
-                            value = keyword,
-                            onValueChange = { keyword = it },
-                            singleLine = true,
-                            label = { Text(context.getString(com.github.kr328.clash.design.R.string.search)) },
-                        )
-                    }
-                    items(filtered, key = AppInfo::packageName) { app ->
-                        AppItem(app, selectedVersion)
-                    }
+                items(filtered, key = AppInfo::packageName) { app ->
+                    AppItem(app, selectedVersion)
                 }
-            },
-        )
+            }
+        }
     }
 
     private fun sendMenuRequest(request: Request) {

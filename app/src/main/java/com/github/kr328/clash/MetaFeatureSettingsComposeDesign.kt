@@ -13,25 +13,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.Restore
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,10 +26,27 @@ import androidx.core.content.getSystemService
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.design.Design
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.github.kr328.clash.ui.ClashMiuixDialog
+import com.github.kr328.clash.ui.ClashMiuixTheme
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextField
+import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Copy
+import top.yukonga.miuix.kmp.icon.extended.FileDownloads
+import top.yukonga.miuix.kmp.icon.extended.Ok
+import top.yukonga.miuix.kmp.icon.extended.Reset
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlin.coroutines.resume
 
 class MetaFeatureSettingsComposeDesign(
@@ -67,11 +65,12 @@ class MetaFeatureSettingsComposeDesign(
     private var content by mutableStateOf(json.encodeToString(configuration))
     private var secretKey by mutableStateOf("")
     private var publicKey by mutableStateOf("")
+    private var resetConfirm by mutableStateOf<CancellableContinuation<Boolean>?>(null)
 
     override val root = ComposeView(context).apply {
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
         setContent {
-            PageTheme {
+            ClashMiuixTheme {
                 PageContent()
             }
         }
@@ -79,54 +78,35 @@ class MetaFeatureSettingsComposeDesign(
 
     suspend fun requestResetConfirm(): Boolean {
         return suspendCancellableCoroutine { ctx ->
-            val dialog = MaterialAlertDialogBuilder(context)
-                .setTitle(com.github.kr328.clash.design.R.string.reset_override_settings)
-                .setMessage(com.github.kr328.clash.design.R.string.reset_override_settings_message)
-                .setPositiveButton(com.github.kr328.clash.design.R.string.ok) { _, _ -> ctx.resume(true) }
-                .setNegativeButton(com.github.kr328.clash.design.R.string.cancel) { _, _ -> }
-                .show()
-
-            dialog.setOnDismissListener {
-                if (!ctx.isCompleted) ctx.resume(false)
-            }
-            ctx.invokeOnCancellation { dialog.dismiss() }
+            resetConfirm = ctx
+            ctx.invokeOnCancellation { resetConfirm = null }
         }
     }
 
-    @Composable
-    private fun PageTheme(content: @Composable () -> Unit) {
-        val colors = if (androidx.compose.foundation.isSystemInDarkTheme()) {
-            darkColorScheme()
-        } else {
-            lightColorScheme()
-        }
-
-        MaterialTheme(colorScheme = colors, content = content)
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun PageContent() {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text(context.getString(com.github.kr328.clash.design.R.string.meta_features)) },
+                    title = context.getString(com.github.kr328.clash.design.R.string.meta_features),
                     navigationIcon = {
                         IconButton(onClick = { (context as? Activity)?.onBackPressed() }) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = MiuixIcons.Back,
                                 contentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
                             )
                         }
                     },
                     actions = {
                         IconButton(onClick = { requests.trySend(Request.ResetOverride) }) {
-                            Icon(Icons.Default.Restore, contentDescription = context.getString(com.github.kr328.clash.design.R.string.reset_override_settings))
+                            Icon(MiuixIcons.Reset, contentDescription = context.getString(com.github.kr328.clash.design.R.string.reset_override_settings))
                         }
                     },
                 )
             },
         ) { innerPadding ->
+            ResetConfirmDialog()
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -154,18 +134,40 @@ class MetaFeatureSettingsComposeDesign(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = 300.dp),
-                            textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                            textStyle = MiuixTheme.textStyles.body2.copy(fontFamily = FontFamily.Monospace),
                         )
                         Button(
                             modifier = Modifier.fillMaxWidth(),
                             onClick = { applyContent() },
                         ) {
-                            Icon(Icons.Default.Save, contentDescription = null)
-                            Text(context.getString(com.github.kr328.clash.design.R.string.save))
+                            Icon(MiuixIcons.Ok, contentDescription = null)
+                            Text(text = context.getString(com.github.kr328.clash.design.R.string.save))
                         }
                     }
                 }
             }
+        }
+    }
+
+    @Composable
+    private fun ResetConfirmDialog() {
+        val continuation = resetConfirm ?: return
+
+        ClashMiuixDialog(
+            title = context.getString(com.github.kr328.clash.design.R.string.reset_override_settings),
+            message = context.getString(com.github.kr328.clash.design.R.string.reset_override_settings_message),
+            confirmText = context.getString(com.github.kr328.clash.design.R.string.ok),
+            onConfirm = { finishResetConfirm(continuation, true) },
+            dismissText = context.getString(com.github.kr328.clash.design.R.string.cancel),
+            onDismissButton = { finishResetConfirm(continuation, false) },
+            onDismissRequest = { finishResetConfirm(continuation, false) },
+        )
+    }
+
+    private fun finishResetConfirm(continuation: CancellableContinuation<Boolean>, confirmed: Boolean) {
+        resetConfirm = null
+        if (!continuation.isCompleted) {
+            continuation.resume(confirmed)
         }
     }
 
@@ -176,35 +178,38 @@ class MetaFeatureSettingsComposeDesign(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Text(context.getString(com.github.kr328.clash.design.R.string.age_key_category), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = context.getString(com.github.kr328.clash.design.R.string.age_key_category),
+                    style = MiuixTheme.textStyles.title3,
+                )
                 TextField(
                     value = secretKey,
                     onValueChange = { secretKey = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(context.getString(com.github.kr328.clash.design.R.string.age_secret_key)) },
+                    label = context.getString(com.github.kr328.clash.design.R.string.age_secret_key),
                 )
                 TextField(
                     value = publicKey,
                     onValueChange = { publicKey = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(context.getString(com.github.kr328.clash.design.R.string.age_public_key)) },
+                    label = context.getString(com.github.kr328.clash.design.R.string.age_public_key),
                 )
                 Button(modifier = Modifier.fillMaxWidth(), onClick = { generateAgeKey(false) }) {
-                    Text(context.getString(com.github.kr328.clash.design.R.string.age_key_type_x25519))
+                    Text(text = context.getString(com.github.kr328.clash.design.R.string.age_key_type_x25519))
                 }
                 Button(modifier = Modifier.fillMaxWidth(), onClick = { generateAgeKey(true) }) {
-                    Text(context.getString(com.github.kr328.clash.design.R.string.age_key_type_hybrid))
+                    Text(text = context.getString(com.github.kr328.clash.design.R.string.age_key_type_hybrid))
                 }
-                OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = { publicKey = Clash.toPublicKeys(secretKey).firstOrNull().orEmpty() }) {
-                    Text(context.getString(com.github.kr328.clash.design.R.string.age_key_to_public))
+                Button(modifier = Modifier.fillMaxWidth(), onClick = { publicKey = Clash.toPublicKeys(secretKey).firstOrNull().orEmpty() }) {
+                    Text(text = context.getString(com.github.kr328.clash.design.R.string.age_key_to_public))
                 }
-                OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = { copy("age_secret_key", secretKey) }) {
-                    Icon(Icons.Default.ContentCopy, contentDescription = null)
-                    Text(context.getString(com.github.kr328.clash.design.R.string.age_key_copy))
+                Button(modifier = Modifier.fillMaxWidth(), onClick = { copy("age_secret_key", secretKey) }) {
+                    Icon(MiuixIcons.Copy, contentDescription = null)
+                    Text(text = context.getString(com.github.kr328.clash.design.R.string.age_key_copy))
                 }
-                OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = { copy("age_public_key", publicKey) }) {
-                    Icon(Icons.Default.ContentCopy, contentDescription = null)
-                    Text(context.getString(com.github.kr328.clash.design.R.string.age_key_copy))
+                Button(modifier = Modifier.fillMaxWidth(), onClick = { copy("age_public_key", publicKey) }) {
+                    Icon(MiuixIcons.Copy, contentDescription = null)
+                    Text(text = context.getString(com.github.kr328.clash.design.R.string.age_key_copy))
                 }
             }
         }
@@ -217,7 +222,10 @@ class MetaFeatureSettingsComposeDesign(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text(context.getString(com.github.kr328.clash.design.R.string.geox_files), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = context.getString(com.github.kr328.clash.design.R.string.geox_files),
+                    style = MiuixTheme.textStyles.title3,
+                )
                 GeoButton(com.github.kr328.clash.design.R.string.import_geoip_file, Request.ImportGeoIp)
                 GeoButton(com.github.kr328.clash.design.R.string.import_geosite_file, Request.ImportGeoSite)
                 GeoButton(com.github.kr328.clash.design.R.string.import_country_file, Request.ImportCountry)
@@ -228,12 +236,12 @@ class MetaFeatureSettingsComposeDesign(
 
     @Composable
     private fun GeoButton(title: Int, request: Request) {
-        OutlinedButton(
+        Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = { requests.trySend(request) },
         ) {
-            Icon(Icons.Default.FileDownload, contentDescription = null)
-            Text(context.getString(title))
+            Icon(MiuixIcons.FileDownloads, contentDescription = null)
+            Text(text = context.getString(title))
         }
     }
 

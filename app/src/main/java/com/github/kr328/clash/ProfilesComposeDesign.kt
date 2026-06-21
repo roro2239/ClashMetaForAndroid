@@ -10,22 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -41,8 +25,21 @@ import com.github.kr328.clash.design.Design
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.util.elapsedIntervalString
 import com.github.kr328.clash.service.model.Profile
+import com.github.kr328.clash.ui.ClashMiuixTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Add
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Refresh
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 class ProfilesComposeDesign(context: Context) : Design<ProfilesComposeDesign.Request>(context) {
     sealed class Request {
@@ -62,7 +59,7 @@ class ProfilesComposeDesign(context: Context) : Design<ProfilesComposeDesign.Req
     override val root = ComposeView(context).apply {
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
         setContent {
-            PageTheme {
+            ClashMiuixTheme {
                 PageContent()
             }
         }
@@ -96,40 +93,28 @@ class ProfilesComposeDesign(context: Context) : Design<ProfilesComposeDesign.Req
     }
 
     @Composable
-    private fun PageTheme(content: @Composable () -> Unit) {
-        val colors = if (androidx.compose.foundation.isSystemInDarkTheme()) {
-            darkColorScheme()
-        } else {
-            lightColorScheme()
-        }
-
-        MaterialTheme(colorScheme = colors, content = content)
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
     private fun PageContent() {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text(context.getString(com.github.kr328.clash.design.R.string.profile)) },
+                    title = context.getString(com.github.kr328.clash.design.R.string.profile),
                     navigationIcon = {
                         IconButton(onClick = { (context as? Activity)?.onBackPressed() }) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = MiuixIcons.Back,
                                 contentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
                             )
                         }
                     },
                     actions = {
                         IconButton(onClick = { requests.trySend(Request.Create) }) {
-                            Icon(Icons.Default.Add, contentDescription = context.getString(com.github.kr328.clash.design.R.string._new))
+                            Icon(MiuixIcons.Add, contentDescription = context.getString(com.github.kr328.clash.design.R.string._new))
                         }
                         IconButton(
                             enabled = !allUpdating && profiles.any { it.imported && it.type != Profile.Type.File },
                             onClick = { requestUpdateAll() },
                         ) {
-                            Icon(Icons.Default.Sync, contentDescription = context.getString(com.github.kr328.clash.design.R.string.update))
+                            Icon(MiuixIcons.Refresh, contentDescription = context.getString(com.github.kr328.clash.design.R.string.update))
                         }
                     },
                 )
@@ -167,7 +152,7 @@ class ProfilesComposeDesign(context: Context) : Design<ProfilesComposeDesign.Req
                 )
                 Text(
                     text = "${profile.type.name} · ${(now - profile.updatedAt).elapsedIntervalString(context)}",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MiuixTheme.textStyles.body2,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -177,38 +162,38 @@ class ProfilesComposeDesign(context: Context) : Design<ProfilesComposeDesign.Req
                         onClick = { requests.trySend(Request.Active(profile)) },
                     ) {
                         Text(
-                            if (profile.active) {
+                            text = if (profile.active) {
                                 context.getString(com.github.kr328.clash.design.R.string.active)
                             } else {
                                 context.getString(com.github.kr328.clash.design.R.string.activate)
                             },
                         )
                     }
-                    OutlinedButton(
+                    Button(
                         modifier = Modifier.fillMaxWidth(),
                         onClick = { requests.trySend(Request.Edit(profile)) },
                     ) {
-                        Text(context.getString(com.github.kr328.clash.design.R.string.edit))
+                        Text(text = context.getString(com.github.kr328.clash.design.R.string.edit))
                     }
                     if (profile.imported && profile.type != Profile.Type.File) {
-                        OutlinedButton(
+                        Button(
                             modifier = Modifier.fillMaxWidth(),
                             onClick = { requests.trySend(Request.Update(profile)) },
                         ) {
-                            Text(context.getString(com.github.kr328.clash.design.R.string.update))
+                            Text(text = context.getString(com.github.kr328.clash.design.R.string.update))
                         }
                     }
-                    OutlinedButton(
+                    Button(
                         modifier = Modifier.fillMaxWidth(),
                         onClick = { requests.trySend(Request.Duplicate(profile)) },
                     ) {
-                        Text(context.getString(com.github.kr328.clash.design.R.string.duplicate))
+                        Text(text = context.getString(com.github.kr328.clash.design.R.string.duplicate))
                     }
-                    OutlinedButton(
+                    Button(
                         modifier = Modifier.fillMaxWidth(),
                         onClick = { requests.trySend(Request.Delete(profile)) },
                     ) {
-                        Text(context.getString(com.github.kr328.clash.design.R.string.delete))
+                        Text(text = context.getString(com.github.kr328.clash.design.R.string.delete))
                     }
                 }
             }
