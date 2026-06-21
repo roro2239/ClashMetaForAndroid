@@ -3,6 +3,7 @@ package com.github.kr328.clash
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import android.content.Context
+import android.net.Uri
 import android.view.View
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +27,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -46,9 +48,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.design.Design
+import com.github.kr328.clash.design.util.elapsedIntervalString
+import com.github.kr328.clash.design.util.toString
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.ui.ClashMiuixDialog
 import com.github.kr328.clash.ui.ClashMiuixTheme
@@ -58,17 +63,32 @@ import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.TabRow
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Add
+import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Contacts
+import top.yukonga.miuix.kmp.icon.extended.Delete
+import top.yukonga.miuix.kmp.icon.extended.Edit
+import top.yukonga.miuix.kmp.icon.extended.File
+import top.yukonga.miuix.kmp.icon.extended.Link
 import top.yukonga.miuix.kmp.icon.extended.More
+import top.yukonga.miuix.kmp.icon.extended.Ok
+import top.yukonga.miuix.kmp.icon.extended.Refresh
+import top.yukonga.miuix.kmp.icon.extended.Scan
 import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.icon.extended.VerticalSplit
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.window.WindowBottomSheet
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
+import androidx.navigationevent.compose.rememberNavigationEventDispatcherOwner
+import java.util.concurrent.TimeUnit
 
 class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(context) {
     sealed class Request {
@@ -77,7 +97,10 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
         object OpenLogs : Request()
         object OpenHelp : Request()
         object OpenAbout : Request()
-        object CreateProfile : Request()
+        object PickProfileFile : Request()
+        object LaunchProfileScanner : Request()
+        data class CreateProfileUrl(val name: String, val url: String, val interval: Long) : Request()
+        data class CreateProfileFile(val name: String, val uri: Uri) : Request()
         object UpdateAllProfiles : Request()
         object StartAppSettings : Request()
         object StartNetworkSettings : Request()
@@ -129,12 +152,24 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
     var allProfilesUpdating by mutableStateOf(false)
         private set
     private var aboutVersionName by mutableStateOf<String?>(null)
+    private var createProfileVisible by mutableStateOf(false)
+    private var createProfileType by mutableStateOf(Profile.Type.Url)
+    private var createProfileName by mutableStateOf("")
+    private var createProfileUrl by mutableStateOf("")
+    private var createProfileInterval by mutableStateOf("")
+    private var createProfileFileUri by mutableStateOf<Uri?>(null)
+    private var createProfileFileName by mutableStateOf("")
 
     override val root: View = ComposeView(context).apply {
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
         setContent {
             ClashMiuixTheme {
-                MainContent()
+                val navigationOwner = rememberNavigationEventDispatcherOwner(parent = null)
+                CompositionLocalProvider(
+                    LocalNavigationEventDispatcherOwner provides navigationOwner
+                ) {
+                    MainContent()
+                }
             }
         }
     }
@@ -195,6 +230,23 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
 
     fun patchAllProfilesUpdating(value: Boolean) {
         allProfilesUpdating = value
+    }
+
+    fun patchPickedProfileFile(uri: Uri, name: String) {
+        createProfileType = Profile.Type.File
+        createProfileFileUri = uri
+        createProfileFileName = name
+        if (createProfileName.isBlank()) {
+            createProfileName = name.substringBeforeLast(".").ifBlank {
+                context.getString(com.github.kr328.clash.design.R.string.new_profile)
+            }
+        }
+    }
+
+    fun patchScannedProfileUrl(url: String) {
+        createProfileVisible = true
+        createProfileType = Profile.Type.Url
+        createProfileUrl = url
     }
 
     fun showAbout(versionName: String) {
@@ -260,6 +312,8 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
                 }
             }
         }
+
+        CreateProfileSheet()
 
         val about = aboutVersionName
         if (about != null) {
@@ -428,6 +482,10 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
                 )
             }
 
+            item {
+                ModeSelectorCard()
+            }
+
             if (homeState.clashRunning && homeState.hasProviders) {
                 item {
                     ActionItem(
@@ -459,15 +517,6 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
                 .fillMaxSize()
                 .padding(top = innerPadding.calculateTopPadding()),
         ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                ModeButton(TunnelState.Mode.Rule)
-                ModeButton(TunnelState.Mode.Global)
-                ModeButton(TunnelState.Mode.Direct)
-            }
-
             TabRow(
                 tabs = proxyGroups.map { it.name },
                 selectedTabIndex = pagerState.currentPage,
@@ -491,7 +540,43 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
     }
 
     @Composable
-    private fun ModeButton(mode: TunnelState.Mode) {
+    private fun ModeSelectorCard() {
+        Card {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = context.getString(com.github.kr328.clash.design.R.string.mode),
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ModeButton(
+                        modifier = Modifier.weight(1f),
+                        mode = TunnelState.Mode.Rule,
+                    )
+                    ModeButton(
+                        modifier = Modifier.weight(1f),
+                        mode = TunnelState.Mode.Global,
+                    )
+                    ModeButton(
+                        modifier = Modifier.weight(1f),
+                        mode = TunnelState.Mode.Direct,
+                    )
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun ModeButton(
+        modifier: Modifier = Modifier,
+        mode: TunnelState.Mode,
+    ) {
         val label = when (mode) {
             TunnelState.Mode.Direct -> context.getString(com.github.kr328.clash.design.R.string.direct_mode)
             TunnelState.Mode.Global -> context.getString(com.github.kr328.clash.design.R.string.global_mode)
@@ -500,6 +585,7 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
         }
 
         Button(
+            modifier = modifier,
             onClick = { send(Request.PatchMode(mode)) },
             colors = ButtonDefaults.buttonColors(
                 color = if (overrideMode == mode) {
@@ -632,22 +718,29 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Button(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = { send(Request.CreateProfile) },
+                        modifier = Modifier.weight(1f),
+                        onClick = { createProfileVisible = true },
                     ) {
+                        Icon(MiuixIcons.Add, contentDescription = null)
                         Text(text = context.getString(com.github.kr328.clash.design.R.string._new))
                     }
-                    Button(
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !allProfilesUpdating,
+                    IconButton(
+                        enabled = !allProfilesUpdating && profiles.any { it.imported && it.type != Profile.Type.File },
                         onClick = {
                             allProfilesUpdating = true
                             send(Request.UpdateAllProfiles)
                         },
                     ) {
-                        Text(text = context.getString(com.github.kr328.clash.design.R.string.update))
+                        Icon(
+                            imageVector = MiuixIcons.Refresh,
+                            contentDescription = context.getString(com.github.kr328.clash.design.R.string.update),
+                        )
                     }
                 }
             }
@@ -661,14 +754,28 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
     @Composable
     private fun ProfileItem(profile: Profile) {
         Card {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(text = profile.name, fontWeight = FontWeight.SemiBold)
-                Text(text = profile.type.name, style = MiuixTheme.textStyles.body2)
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = { send(Request.ActiveProfile(profile)) },
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
+                        Text(
+                            text = profile.name,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        ProfileMetaText(profile)
+                    }
+                    Button(onClick = { send(Request.ActiveProfile(profile)) }) {
                         Text(
                             text = if (profile.active) {
                                 context.getString(com.github.kr328.clash.design.R.string.active)
@@ -677,35 +784,234 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
                             }
                         )
                     }
-                    Button(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = { send(Request.EditProfile(profile)) },
-                    ) {
-                        Text(text = context.getString(com.github.kr328.clash.design.R.string.edit))
-                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     if (profile.imported && profile.type != Profile.Type.File) {
                         Button(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.weight(1f),
                             onClick = { send(Request.UpdateProfile(profile)) },
                         ) {
                             Text(text = context.getString(com.github.kr328.clash.design.R.string.update))
                         }
                     }
-                    Button(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = { send(Request.DuplicateProfile(profile)) },
-                    ) {
-                        Text(text = context.getString(com.github.kr328.clash.design.R.string.duplicate))
+                    IconButton(onClick = { send(Request.EditProfile(profile)) }) {
+                        Icon(
+                            imageVector = MiuixIcons.Edit,
+                            contentDescription = context.getString(com.github.kr328.clash.design.R.string.edit),
+                        )
                     }
-                    Button(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = { send(Request.DeleteProfile(profile)) },
-                    ) {
-                        Text(text = context.getString(com.github.kr328.clash.design.R.string.delete))
+                    IconButton(onClick = { send(Request.DuplicateProfile(profile)) }) {
+                        Icon(
+                            imageVector = MiuixIcons.Add,
+                            contentDescription = context.getString(com.github.kr328.clash.design.R.string.duplicate),
+                        )
+                    }
+                    IconButton(onClick = { send(Request.DeleteProfile(profile)) }) {
+                        Icon(
+                            imageVector = MiuixIcons.Delete,
+                            contentDescription = context.getString(com.github.kr328.clash.design.R.string.delete),
+                            tint = MiuixTheme.colorScheme.error,
+                        )
                     }
                 }
             }
         }
+    }
+
+    @Composable
+    private fun CreateProfileSheet() {
+        WindowBottomSheet(
+            show = createProfileVisible,
+            title = context.getString(com.github.kr328.clash.design.R.string.new_profile),
+            startAction = {
+                IconButton(onClick = { closeCreateProfile() }) {
+                    Icon(
+                        imageVector = MiuixIcons.Back,
+                        contentDescription = context.getString(com.github.kr328.clash.design.R.string.cancel),
+                    )
+                }
+            },
+            onDismissRequest = { closeCreateProfile() },
+            insideMargin = DpSize(16.dp, 16.dp),
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CreateProfileTypeButton(
+                        modifier = Modifier.weight(1f),
+                        type = Profile.Type.Url,
+                        icon = MiuixIcons.Link,
+                        title = context.getString(com.github.kr328.clash.design.R.string.subscription),
+                    )
+                    CreateProfileTypeButton(
+                        modifier = Modifier.weight(1f),
+                        type = Profile.Type.File,
+                        icon = MiuixIcons.File,
+                        title = context.getString(com.github.kr328.clash.design.R.string.file),
+                    )
+                    Button(
+                        modifier = Modifier.weight(1f),
+                        onClick = { send(Request.LaunchProfileScanner) },
+                    ) {
+                        Icon(MiuixIcons.Scan, contentDescription = null)
+                        Text(
+                            text = context.getString(com.github.kr328.clash.design.R.string.qr),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+
+                TextField(
+                    value = createProfileName,
+                    onValueChange = { createProfileName = it },
+                    label = context.getString(com.github.kr328.clash.design.R.string.name),
+                    singleLine = true,
+                )
+
+                if (createProfileType == Profile.Type.Url) {
+                    TextField(
+                        value = createProfileUrl,
+                        onValueChange = { createProfileUrl = it },
+                        label = context.getString(com.github.kr328.clash.design.R.string.profile_url),
+                        maxLines = 2,
+                    )
+                    TextField(
+                        value = createProfileInterval,
+                        onValueChange = { createProfileInterval = it.filter(Char::isDigit) },
+                        label = context.getString(com.github.kr328.clash.design.R.string.auto_update_minutes),
+                        singleLine = true,
+                    )
+                } else {
+                    Card(onClick = { send(Request.PickProfileFile) }) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(MiuixIcons.File, contentDescription = null)
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Text(
+                                    text = context.getString(com.github.kr328.clash.design.R.string.select_file),
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Text(
+                                    text = createProfileFileName.ifBlank {
+                                        context.getString(com.github.kr328.clash.design.R.string.not_selected)
+                                    },
+                                    style = MiuixTheme.textStyles.body2,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { submitCreateProfile() },
+                ) {
+                    Icon(MiuixIcons.Ok, contentDescription = null)
+                    Text(text = context.getString(com.github.kr328.clash.design.R.string.save))
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun CreateProfileTypeButton(
+        modifier: Modifier,
+        type: Profile.Type,
+        icon: ImageVector,
+        title: String,
+    ) {
+        Button(
+            modifier = modifier,
+            onClick = {
+                createProfileType = type
+                if (type == Profile.Type.File) {
+                    createProfileUrl = ""
+                    createProfileInterval = ""
+                }
+            },
+        ) {
+            Icon(icon, contentDescription = null)
+            Text(
+                text = title,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                fontWeight = if (createProfileType == type) FontWeight.SemiBold else FontWeight.Normal,
+            )
+        }
+    }
+
+    @Composable
+    private fun ProfileMetaText(profile: Profile) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = when (profile.type) {
+                    Profile.Type.Url -> context.getString(com.github.kr328.clash.design.R.string.subscription)
+                    else -> profile.type.toString(context)
+                },
+                style = MiuixTheme.textStyles.body2,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (profile.type != Profile.Type.File && profile.source.isNotBlank()) {
+                Text(
+                    text = profile.source,
+                    style = MiuixTheme.textStyles.body2,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+
+    private fun submitCreateProfile() {
+        val name = createProfileName.trim().ifBlank {
+            context.getString(com.github.kr328.clash.design.R.string.new_profile)
+        }
+
+        if (createProfileType == Profile.Type.Url) {
+            send(
+                Request.CreateProfileUrl(
+                    name = name,
+                    url = createProfileUrl.trim(),
+                    interval = createProfileInterval.toLongOrNull()?.let(TimeUnit.MINUTES::toMillis) ?: 0L,
+                )
+            )
+        } else {
+            val uri = createProfileFileUri ?: return
+            send(Request.CreateProfileFile(name, uri))
+        }
+        closeCreateProfile()
+    }
+
+    private fun closeCreateProfile() {
+        createProfileVisible = false
+        createProfileType = Profile.Type.Url
+        createProfileName = ""
+        createProfileUrl = ""
+        createProfileInterval = ""
+        createProfileFileUri = null
+        createProfileFileName = ""
     }
 
     @Composable

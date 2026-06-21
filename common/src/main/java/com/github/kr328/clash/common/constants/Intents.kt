@@ -27,4 +27,5 @@ object Intents {
     const val EXTRA_STOP_REASON = "stop_reason"
     const val EXTRA_UUID = "uuid"
     const val EXTRA_FAIL_REASON = "fail_reason"
+    const val EXTRA_OPEN_CREATE_PROFILE = "open_create_profile"
 }

@@ -2,8 +2,10 @@ package com.github.kr328.clash
 
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.OpenableColumns
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.core.content.ContextCompat
@@ -20,10 +22,18 @@ import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.core.util.trafficTotal
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.model.Profile
+import com.github.kr328.clash.service.util.pendingDir
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.util.withClash
 import com.github.kr328.clash.util.withProfile
+import io.github.g00fy2.quickie.QRResult
+import io.github.g00fy2.quickie.QRResult.QRError
+import io.github.g00fy2.quickie.QRResult.QRMissingPermission
+import io.github.g00fy2.quickie.QRResult.QRSuccess
+import io.github.g00fy2.quickie.QRResult.QRUserCanceled
+import io.github.g00fy2.quickie.ScanQRCode
+import java.io.FileNotFoundException
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
@@ -36,21 +46,28 @@ import kotlinx.coroutines.withContext
 import com.github.kr328.clash.design.R as DesignR
 
 class MainActivity : BaseActivity<MainComposeDesign>() {
+    private val scanLauncher = registerForActivityResult(ScanQRCode(), ::scanResultHandler)
+
     override suspend fun main() {
         val design = MainComposeDesign(this)
 
         setContentDesign(design)
 
-        var proxyNames = loadProxyNames()
         val proxyReloadLock = Semaphore(10)
+        var proxyNames = emptyList<String>()
+
+        suspend fun reloadProxyNamesAndGroups() {
+            proxyNames = loadProxyNames()
+            design.patchProxyGroups(proxyNames)
+            proxyNames.indices.forEach { index ->
+                design.reloadProxyGroup(index, proxyNames, proxyReloadLock)
+            }
+        }
 
         design.patchOverrideMode(loadOverrideMode())
-        design.patchProxyGroups(proxyNames)
         design.fetchHome()
         design.fetchProfiles()
-        proxyNames.indices.forEach { index ->
-            design.reloadProxyGroup(index, proxyNames, proxyReloadLock)
-        }
+        reloadProxyNamesAndGroups()
 
         val trafficTicker = ticker(TimeUnit.SECONDS.toMillis(1))
 
@@ -73,17 +90,14 @@ class MainActivity : BaseActivity<MainComposeDesign>() {
                     }
 
                     when (it) {
-                        Event.ClashStart, Event.ProfileLoaded -> {
-                            val newProxyNames = loadProxyNames()
-
-                            if (newProxyNames != proxyNames) {
-                                proxyNames = newProxyNames
-                                design.patchOverrideMode(loadOverrideMode())
-                                design.patchProxyGroups(proxyNames)
-                                proxyNames.indices.forEach { index ->
-                                    design.reloadProxyGroup(index, proxyNames, proxyReloadLock)
-                                }
-                            }
+                        Event.ActivityStart,
+                        Event.ServiceRecreated,
+                        Event.ClashStop,
+                        Event.ClashStart,
+                        Event.ProfileLoaded,
+                        Event.ProfileChanged -> {
+                            design.patchOverrideMode(loadOverrideMode())
+                            reloadProxyNamesAndGroups()
                         }
                         else -> Unit
                     }
@@ -110,8 +124,22 @@ class MainActivity : BaseActivity<MainComposeDesign>() {
                             startActivity(HelpActivity::class.intent)
                         MainComposeDesign.Request.OpenAbout ->
                             design.showAbout(queryAppVersionName())
-                        MainComposeDesign.Request.CreateProfile ->
-                            startActivity(NewProfileActivity::class.intent)
+                        MainComposeDesign.Request.PickProfileFile -> {
+                            val uri = startActivityForResult(
+                                ActivityResultContracts.GetContent(),
+                                "*/*",
+                            )
+
+                            if (uri != null) {
+                                design.patchPickedProfileFile(uri, queryDisplayName(uri))
+                            }
+                        }
+                        MainComposeDesign.Request.LaunchProfileScanner ->
+                            scanLauncher.launch(null)
+                        is MainComposeDesign.Request.CreateProfileUrl ->
+                            createUrlProfile(design, it)
+                        is MainComposeDesign.Request.CreateProfileFile ->
+                            createFileProfile(design, it)
                         MainComposeDesign.Request.UpdateAllProfiles ->
                             updateAllProfiles(design)
                         MainComposeDesign.Request.StartAppSettings ->
@@ -210,6 +238,103 @@ class MainActivity : BaseActivity<MainComposeDesign>() {
                 }
             }
             design?.fetchProfiles()
+        }
+    }
+
+    private suspend fun createUrlProfile(
+        design: MainComposeDesign,
+        request: MainComposeDesign.Request.CreateProfileUrl,
+    ) {
+        if (!request.url.isValidProfileUrl()) {
+            design.showToast(DesignR.string.invalid_url, ToastDuration.Long)
+            return
+        }
+
+        withProfile {
+            val uuid = create(Profile.Type.Url, request.name, request.url, null)
+
+            if (request.interval > 0) {
+                patch(uuid, request.name, request.url, request.interval, null)
+            }
+            commit(uuid) {}
+        }
+        design.fetchProfiles()
+    }
+
+    private suspend fun createFileProfile(
+        design: MainComposeDesign,
+        request: MainComposeDesign.Request.CreateProfileFile,
+    ) {
+        val uuid = withProfile {
+            create(Profile.Type.File, request.name, "", null)
+        }
+
+        withContext(Dispatchers.IO) {
+            contentResolver.openInputStream(request.uri).use { input ->
+                if (input == null) {
+                    throw FileNotFoundException(request.uri.toString())
+                }
+
+                val target = pendingDir
+                    .resolve(uuid.toString())
+                    .resolve("config.yaml")
+
+                target.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+        }
+
+        withProfile {
+            commit(uuid) {}
+        }
+        design.fetchProfiles()
+    }
+
+    private fun queryDisplayName(uri: Uri): String {
+        contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (index >= 0) {
+                    val name = cursor.getString(index)
+                    if (!name.isNullOrBlank()) {
+                        return name
+                    }
+                }
+            }
+        }
+
+        return uri.lastPathSegment?.substringAfterLast('/')?.ifBlank {
+            getString(DesignR.string.new_profile)
+        } ?: getString(DesignR.string.new_profile)
+    }
+
+    private fun String.isValidProfileUrl(): Boolean {
+        val scheme = Uri.parse(this).scheme
+
+        return scheme == "http" || scheme == "https"
+    }
+
+    private fun scanResultHandler(result: QRResult) {
+        launch {
+            when (result) {
+                is QRSuccess -> {
+                    val url = result.content.rawValue
+                        ?: result.content.rawBytes?.let { String(it) }.orEmpty()
+
+                    design?.patchScannedProfileUrl(url)
+                }
+
+                QRUserCanceled -> {}
+                QRMissingPermission -> design?.showToast(
+                    DesignR.string.import_from_qr_no_permission,
+                    ToastDuration.Long,
+                )
+                is QRError -> design?.showToast(
+                    DesignR.string.import_from_qr_exception,
+                    ToastDuration.Long,
+                )
+            }
         }
     }
 
@@ -324,20 +449,21 @@ class MainActivity : BaseActivity<MainComposeDesign>() {
     }
 
     private suspend fun loadOverrideMode(): TunnelState.Mode? {
-        if (!clashRunning) return null
-
         return withClash {
-            queryOverride(Clash.OverrideSlot.Session).mode
+            queryOverride(Clash.OverrideSlot.Persist).mode
         }
     }
 
     private suspend fun patchMode(mode: TunnelState.Mode?) {
         withClash {
-            val override = queryOverride(Clash.OverrideSlot.Session)
+            val persist = queryOverride(Clash.OverrideSlot.Persist)
+            val session = queryOverride(Clash.OverrideSlot.Session)
 
-            override.mode = mode
+            persist.mode = mode
+            session.mode = mode
 
-            patchOverride(Clash.OverrideSlot.Session, override)
+            patchOverride(Clash.OverrideSlot.Persist, persist)
+            patchOverride(Clash.OverrideSlot.Session, session)
         }
     }
 

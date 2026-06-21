@@ -1,8 +1,6 @@
 package com.github.kr328.clash
 
 import android.app.Activity
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,8 +21,6 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import androidx.core.content.getSystemService
-import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.design.Design
 import com.github.kr328.clash.ui.ClashMiuixDialog
@@ -41,7 +37,6 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Copy
 import top.yukonga.miuix.kmp.icon.extended.FileDownloads
 import top.yukonga.miuix.kmp.icon.extended.Ok
 import top.yukonga.miuix.kmp.icon.extended.Reset
@@ -62,8 +57,6 @@ class MetaFeatureSettingsComposeDesign(
         ignoreUnknownKeys = true
     }
     private var content by mutableStateOf(json.encodeToString(configuration))
-    private var secretKey by mutableStateOf("")
-    private var publicKey by mutableStateOf("")
     private var resetConfirm by mutableStateOf<CancellableContinuation<Boolean>?>(null)
 
     override val root = ComposeView(context).apply {
@@ -111,7 +104,6 @@ class MetaFeatureSettingsComposeDesign(
                     ),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                AgeKeyCard()
                 GeoFilesCard()
                 Card {
                     Column(
@@ -162,50 +154,6 @@ class MetaFeatureSettingsComposeDesign(
     }
 
     @Composable
-    private fun AgeKeyCard() {
-        Card {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text(
-                    text = context.getString(com.github.kr328.clash.design.R.string.age_key_category),
-                    style = MiuixTheme.textStyles.title3,
-                )
-                TextField(
-                    value = secretKey,
-                    onValueChange = { secretKey = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = context.getString(com.github.kr328.clash.design.R.string.age_secret_key),
-                )
-                TextField(
-                    value = publicKey,
-                    onValueChange = { publicKey = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = context.getString(com.github.kr328.clash.design.R.string.age_public_key),
-                )
-                Button(modifier = Modifier.fillMaxWidth(), onClick = { generateAgeKey(false) }) {
-                    Text(text = context.getString(com.github.kr328.clash.design.R.string.age_key_type_x25519))
-                }
-                Button(modifier = Modifier.fillMaxWidth(), onClick = { generateAgeKey(true) }) {
-                    Text(text = context.getString(com.github.kr328.clash.design.R.string.age_key_type_hybrid))
-                }
-                Button(modifier = Modifier.fillMaxWidth(), onClick = { publicKey = Clash.toPublicKeys(secretKey).firstOrNull().orEmpty() }) {
-                    Text(text = context.getString(com.github.kr328.clash.design.R.string.age_key_to_public))
-                }
-                Button(modifier = Modifier.fillMaxWidth(), onClick = { copy("age_secret_key", secretKey) }) {
-                    Icon(MiuixIcons.Copy, contentDescription = null)
-                    Text(text = context.getString(com.github.kr328.clash.design.R.string.age_key_copy))
-                }
-                Button(modifier = Modifier.fillMaxWidth(), onClick = { copy("age_public_key", publicKey) }) {
-                    Icon(MiuixIcons.Copy, contentDescription = null)
-                    Text(text = context.getString(com.github.kr328.clash.design.R.string.age_key_copy))
-                }
-            }
-        }
-    }
-
-    @Composable
     private fun GeoFilesCard() {
         Card {
             Column(
@@ -244,16 +192,4 @@ class MetaFeatureSettingsComposeDesign(
         }
     }
 
-    private fun generateAgeKey(hybrid: Boolean) {
-        val keyPair = if (hybrid) Clash.genHybridKeyPair() else Clash.genX25519KeyPair()
-
-        secretKey = keyPair.secretKey
-        publicKey = keyPair.publicKey
-    }
-
-    private fun copy(label: String, value: String) {
-        if (value.isBlank()) return
-
-        context.getSystemService<ClipboardManager>()?.setPrimaryClip(ClipData.newPlainText(label, value))
-    }
 }

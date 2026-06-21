@@ -13,7 +13,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Save
@@ -35,7 +34,6 @@ import com.github.kr328.clash.design.Design
 import com.github.kr328.clash.design.dialog.ModelProgressBarConfigure
 import com.github.kr328.clash.design.dialog.requestModelTextInput
 import com.github.kr328.clash.design.dialog.withModelProgressBar
-import com.github.kr328.clash.design.util.ValidatorAgeSecretKey
 import com.github.kr328.clash.design.util.ValidatorAutoUpdateInterval
 import com.github.kr328.clash.design.util.ValidatorHttpUrl
 import com.github.kr328.clash.design.util.ValidatorNotBlank
@@ -146,25 +144,6 @@ class PropertiesComposeDesign(context: Context) : Design<PropertiesComposeDesign
         }
     }
 
-    fun inputAgeSecretKey() {
-        val current = profile ?: return
-
-        launch {
-            val ageSecretKey = context.requestModelTextInput(
-                initial = current.ageSecretKey ?: "",
-                title = context.getText(com.github.kr328.clash.design.R.string.age_secret_key),
-                hint = context.getText(com.github.kr328.clash.design.R.string.age_secret_key_hint),
-                error = context.getText(com.github.kr328.clash.design.R.string.age_secret_key_error),
-                validator = ValidatorAgeSecretKey,
-            )
-
-            val newKey = ageSecretKey.ifBlank { null }
-            if (newKey != current.ageSecretKey) {
-                profile = current.copy(ageSecretKey = newKey)
-            }
-        }
-    }
-
     fun inputInterval() {
         val current = profile ?: return
 
@@ -256,12 +235,6 @@ class PropertiesComposeDesign(context: Context) : Design<PropertiesComposeDesign
                         },
                         enabled = current.type != Profile.Type.File,
                         onClick = { inputUrl() },
-                    )
-                    FieldItem(
-                        icon = Icons.Default.Key,
-                        title = context.getString(com.github.kr328.clash.design.R.string.age_secret_key),
-                        value = current.ageSecretKey ?: context.getString(com.github.kr328.clash.design.R.string.age_secret_key_hint),
-                        onClick = { inputAgeSecretKey() },
                     )
                     FieldItem(
                         icon = Icons.Default.Update,
