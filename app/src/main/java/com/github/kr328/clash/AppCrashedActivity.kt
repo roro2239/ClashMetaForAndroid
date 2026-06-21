@@ -2,15 +2,15 @@ package com.github.kr328.clash
 
 import com.github.kr328.clash.common.compat.versionCodeCompat
 import com.github.kr328.clash.common.log.Log
-import com.github.kr328.clash.design.AppCrashedDesign
 import com.github.kr328.clash.log.SystemLogcat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
+import com.github.kr328.clash.design.R as DesignR
 
-class AppCrashedActivity : BaseActivity<AppCrashedDesign>() {
+class AppCrashedActivity : BaseActivity<SimpleComposeDesign>() {
     override suspend fun main() {
-        val design = AppCrashedDesign(this)
+        val design = SimpleComposeDesign(this, title = getString(DesignR.string.application_name))
 
         setContentDesign(design)
 
@@ -24,7 +24,7 @@ class AppCrashedActivity : BaseActivity<AppCrashedDesign>() {
             SystemLogcat.dumpCrash()
         }
 
-        design.setAppLogs(logs)
+        design.patchBodyText(logs)
 
         while (isActive) {
             events.receive()

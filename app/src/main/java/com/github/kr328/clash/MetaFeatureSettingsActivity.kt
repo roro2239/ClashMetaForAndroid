@@ -6,7 +6,6 @@ import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import com.github.kr328.clash.core.Clash
-import com.github.kr328.clash.design.MetaFeatureSettingsDesign
 import com.github.kr328.clash.util.clashDir
 import com.github.kr328.clash.util.withClash
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -19,7 +18,7 @@ import java.io.FileOutputStream
 import com.github.kr328.clash.design.R
 
 
-class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
+class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsComposeDesign>() {
     override suspend fun main() {
         val configuration = withClash { queryOverride(Clash.OverrideSlot.Persist) }
 
@@ -29,7 +28,7 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
             }
         }
 
-        val design = MetaFeatureSettingsDesign(
+        val design = MetaFeatureSettingsComposeDesign(
             this,
             configuration
         )
@@ -43,7 +42,7 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
                 }
                 design.requests.onReceive {
                     when (it) {
-                        MetaFeatureSettingsDesign.Request.ResetOverride -> {
+                        MetaFeatureSettingsComposeDesign.Request.ResetOverride -> {
                             if (design.requestResetConfirm()) {
                                 defer {
                                     withClash {
@@ -53,29 +52,29 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
                                 finish()
                             }
                         }
-                        MetaFeatureSettingsDesign.Request.ImportGeoIp -> {
+                        MetaFeatureSettingsComposeDesign.Request.ImportGeoIp -> {
                             val uri = startActivityForResult(
                                 ActivityResultContracts.GetContent(),
                                 "*/*")
-                            importGeoFile(uri, MetaFeatureSettingsDesign.Request.ImportGeoIp)
+                            importGeoFile(uri, MetaFeatureSettingsComposeDesign.Request.ImportGeoIp)
                         }
-                        MetaFeatureSettingsDesign.Request.ImportGeoSite -> {
+                        MetaFeatureSettingsComposeDesign.Request.ImportGeoSite -> {
                             val uri = startActivityForResult(
                                 ActivityResultContracts.GetContent(),
                                 "*/*")
-                            importGeoFile(uri, MetaFeatureSettingsDesign.Request.ImportGeoSite)
+                            importGeoFile(uri, MetaFeatureSettingsComposeDesign.Request.ImportGeoSite)
                         }
-                        MetaFeatureSettingsDesign.Request.ImportCountry -> {
+                        MetaFeatureSettingsComposeDesign.Request.ImportCountry -> {
                             val uri = startActivityForResult(
                                 ActivityResultContracts.GetContent(),
                                 "*/*")
-                            importGeoFile(uri, MetaFeatureSettingsDesign.Request.ImportCountry)
+                            importGeoFile(uri, MetaFeatureSettingsComposeDesign.Request.ImportCountry)
                         }
-                        MetaFeatureSettingsDesign.Request.ImportASN -> {
+                        MetaFeatureSettingsComposeDesign.Request.ImportASN -> {
                             val uri = startActivityForResult(
                                 ActivityResultContracts.GetContent(),
                                 "*/*")
-                            importGeoFile(uri, MetaFeatureSettingsDesign.Request.ImportASN)
+                            importGeoFile(uri, MetaFeatureSettingsComposeDesign.Request.ImportASN)
                         }
                     }
                 }
@@ -87,7 +86,7 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
         ".metadb", ".db", ".dat", ".mmdb"
     )
 
-    private suspend fun importGeoFile(uri: Uri?, importType: MetaFeatureSettingsDesign.Request) {
+    private suspend fun importGeoFile(uri: Uri?, importType: MetaFeatureSettingsComposeDesign.Request) {
         val cursor: Cursor? = uri?.let {
             contentResolver.query(it, null, null, null, null, null)
         }
@@ -108,13 +107,13 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
                     return
                 }
                 val outputFileName = when (importType) {
-                    MetaFeatureSettingsDesign.Request.ImportGeoIp ->
+                    MetaFeatureSettingsComposeDesign.Request.ImportGeoIp ->
                         "geoip$ext"
-                    MetaFeatureSettingsDesign.Request.ImportGeoSite ->
+                    MetaFeatureSettingsComposeDesign.Request.ImportGeoSite ->
                         "geosite$ext"
-                    MetaFeatureSettingsDesign.Request.ImportCountry ->
+                    MetaFeatureSettingsComposeDesign.Request.ImportCountry ->
                         "country$ext"
-                    MetaFeatureSettingsDesign.Request.ImportASN ->
+                    MetaFeatureSettingsComposeDesign.Request.ImportASN ->
                         "ASN$ext"
                     else -> ""
                 }

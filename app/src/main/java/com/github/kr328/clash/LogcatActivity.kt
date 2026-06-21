@@ -13,7 +13,6 @@ import com.github.kr328.clash.common.util.fileName
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.ticker
 import com.github.kr328.clash.core.model.LogMessage
-import com.github.kr328.clash.design.LogcatDesign
 import com.github.kr328.clash.design.dialog.withModelProgressBar
 import com.github.kr328.clash.design.model.LogFile
 import com.github.kr328.clash.design.ui.ToastDuration
@@ -30,7 +29,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 import com.github.kr328.clash.design.R
 
-class LogcatActivity : BaseActivity<LogcatDesign>() {
+class LogcatActivity : BaseActivity<LogcatComposeDesign>() {
     private var conn: ServiceConnection? = null
 
     override suspend fun main() {
@@ -53,7 +52,7 @@ class LogcatActivity : BaseActivity<LogcatDesign>() {
             return showInvalid()
         }
 
-        val design = LogcatDesign(this, false)
+        val design = LogcatComposeDesign(this, false)
 
         setContentDesign(design)
 
@@ -61,14 +60,14 @@ class LogcatActivity : BaseActivity<LogcatDesign>() {
 
         while (isActive) {
             when (design.requests.receive()) {
-                LogcatDesign.Request.Delete -> {
+                LogcatComposeDesign.Request.Delete -> {
                     withContext(Dispatchers.IO) {
                         logsDir.resolve(file.fileName).delete()
                     }
 
                     finish()
                 }
-                LogcatDesign.Request.Export -> {
+                LogcatComposeDesign.Request.Export -> {
                     val output = startActivityForResult(
                         ActivityResultContracts.CreateDocument("text/plain"),
                         file.fileName
@@ -92,7 +91,7 @@ class LogcatActivity : BaseActivity<LogcatDesign>() {
     }
 
     private suspend fun mainStreaming() {
-        val design = LogcatDesign(this, true)
+        val design = LogcatComposeDesign(this, true)
 
         setContentDesign(design)
 
@@ -110,7 +109,7 @@ class LogcatActivity : BaseActivity<LogcatDesign>() {
                 }
                 design.requests.onReceive {
                     when (it) {
-                        LogcatDesign.Request.Close -> {
+                        LogcatComposeDesign.Request.Close -> {
                             stopService(LogcatService::class.intent)
                             startActivity(LogsActivity::class.intent)
                             finish()

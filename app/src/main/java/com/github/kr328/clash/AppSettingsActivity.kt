@@ -3,7 +3,6 @@ package com.github.kr328.clash
 import android.content.ComponentName
 import android.content.pm.PackageManager
 import com.github.kr328.clash.common.util.componentName
-import com.github.kr328.clash.design.AppSettingsDesign
 import com.github.kr328.clash.design.model.Behavior
 import com.github.kr328.clash.design.store.UiStore.Companion.mainActivityAlias
 import com.github.kr328.clash.service.store.ServiceStore
@@ -11,9 +10,9 @@ import com.github.kr328.clash.util.ApplicationObserver
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select
 
-class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
+class AppSettingsActivity : BaseActivity<AppSettingsComposeDesign>(), Behavior {
     override suspend fun main() {
-        val design = AppSettingsDesign(
+        val design = AppSettingsComposeDesign(
             this,
             uiStore,
             ServiceStore(this),

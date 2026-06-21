@@ -1,12 +1,16 @@
 package com.github.kr328.clash.design.dialog
 
 import android.content.Context
+import android.view.inputmethod.InputMethodManager
+import android.widget.FrameLayout
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.getSystemService
 import androidx.core.widget.doOnTextChanged
 import com.github.kr328.clash.design.R
-import com.github.kr328.clash.design.databinding.DialogTextFieldBinding
 import com.github.kr328.clash.design.util.*
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
@@ -29,15 +33,22 @@ suspend fun Context.requestModelTextInput(
     validator: Validator = ValidatorAcceptAll,
 ): String? {
     return suspendCancellableCoroutine {
-        val binding = DialogTextFieldBinding
-            .inflate(layoutInflater, this.root, false)
+        val field = TextInputEditText(this)
+        val layout = TextInputLayout(this).apply {
+            addView(field)
+        }
+        val container = FrameLayout(this).apply {
+            val padding = resources.getDimensionPixelSize(R.dimen.item_tailing_margin)
+            setPadding(padding, padding, padding, 0)
+            addView(layout)
+        }
 
         val builder = MaterialAlertDialogBuilder(this)
             .setTitle(title)
-            .setView(binding.root)
+            .setView(container)
             .setCancelable(true)
             .setPositiveButton(R.string.ok) { _, _ ->
-                val text = binding.textField.text?.toString() ?: ""
+                val text = field.text?.toString() ?: ""
 
                 if (validator(text))
                     it.resume(text)
@@ -64,20 +75,20 @@ suspend fun Context.requestModelTextInput(
 
         dialog.setOnShowListener {
             if (hint != null)
-                binding.textLayout.hint = hint
+                layout.hint = hint
 
-            binding.textField.apply {
-                binding.textLayout.isErrorEnabled = error != null
+            field.apply {
+                layout.isErrorEnabled = error != null
 
                 doOnTextChanged { text, _, _, _ ->
                     if (!validator(text?.toString() ?: "")) {
                         if (error != null)
-                            binding.textLayout.error = error
+                            layout.error = error
 
                         dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
                     } else {
                         if (error != null)
-                            binding.textLayout.error = null
+                            layout.error = null
 
                         dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
                     }
@@ -87,7 +98,11 @@ suspend fun Context.requestModelTextInput(
 
                 setSelection(0, initial?.length ?: 0)
 
-                requestTextInput()
+                requestFocus()
+                post {
+                    this@requestModelTextInput.getSystemService<InputMethodManager>()
+                        ?.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
+                }
             }
         }
 

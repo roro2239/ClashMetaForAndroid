@@ -1,20 +1,12 @@
 package com.github.kr328.clash
 
-import android.content.pm.PackageManager
-import com.github.kr328.clash.common.compat.getDrawableCompat
-import com.github.kr328.clash.common.constants.Metadata
 import com.github.kr328.clash.core.Clash
-import com.github.kr328.clash.design.OverrideSettingsDesign
-import com.github.kr328.clash.design.model.AppInfo
-import com.github.kr328.clash.design.util.toAppInfo
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.util.withClash
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select
-import kotlinx.coroutines.withContext
 
-class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
+class OverrideSettingsActivity : BaseActivity<OverrideSettingsComposeDesign>() {
     override suspend fun main() {
         val configuration = withClash { queryOverride(Clash.OverrideSlot.Persist) }
         val service = ServiceStore(this)
@@ -25,7 +17,7 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
             }
         }
 
-        val design = OverrideSettingsDesign(
+        val design = OverrideSettingsComposeDesign(
             this,
             configuration
         )
@@ -39,7 +31,7 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
                 }
                 design.requests.onReceive {
                     when (it) {
-                        OverrideSettingsDesign.Request.ResetOverride -> {
+                        OverrideSettingsComposeDesign.Request.ResetOverride -> {
                             if (design.requestResetConfirm()) {
                                 defer {
                                     withClash {

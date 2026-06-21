@@ -1,13 +1,12 @@
 package com.github.kr328.clash
 
 import com.github.kr328.clash.common.util.intent
-import com.github.kr328.clash.design.SettingsDesign
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select
 
-class SettingsActivity : BaseActivity<SettingsDesign>() {
+class SettingsActivity : BaseActivity<SettingsComposeDesign>() {
     override suspend fun main() {
-        val design = SettingsDesign(this)
+        val design = SettingsComposeDesign(this)
 
         setContentDesign(design)
 
@@ -18,13 +17,13 @@ class SettingsActivity : BaseActivity<SettingsDesign>() {
                 }
                 design.requests.onReceive {
                     when (it) {
-                        SettingsDesign.Request.StartApp ->
+                        SettingsComposeDesign.Request.StartApp ->
                             startActivity(AppSettingsActivity::class.intent)
-                        SettingsDesign.Request.StartNetwork ->
+                        SettingsComposeDesign.Request.StartNetwork ->
                             startActivity(NetworkSettingsActivity::class.intent)
-                        SettingsDesign.Request.StartOverride ->
+                        SettingsComposeDesign.Request.StartOverride ->
                             startActivity(OverrideSettingsActivity::class.intent)
-                        SettingsDesign.Request.StartMetaFeature ->
+                        SettingsComposeDesign.Request.StartMetaFeature ->
                             startActivity(MetaFeatureSettingsActivity::class.intent)
                     }
                 }

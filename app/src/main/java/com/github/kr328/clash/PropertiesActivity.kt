@@ -3,7 +3,6 @@ package com.github.kr328.clash
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setUUID
 import com.github.kr328.clash.common.util.uuid
-import com.github.kr328.clash.design.PropertiesDesign
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.service.model.Profile
@@ -14,7 +13,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import com.github.kr328.clash.design.R
 
-class PropertiesActivity : BaseActivity<PropertiesDesign>() {
+class PropertiesActivity : BaseActivity<PropertiesComposeDesign>() {
     private var canceled: Boolean = false
     private lateinit var original: Profile
 
@@ -22,7 +21,7 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
         setResult(RESULT_CANCELED)
 
         val uuid = intent.uuid ?: return finish()
-        val design = PropertiesDesign(this)
+        val design = PropertiesComposeDesign(this)
 
         original = withProfile { queryByUUID(uuid) } ?: return finish()
 
@@ -41,7 +40,7 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
                 events.onReceive {
                     when (it) {
                         Event.ActivityStop -> {
-                            val profile = design.profile
+                            val profile = design.profile ?: return@onReceive
 
                             if (!canceled && profile != original) {
                                 withProfile {
@@ -57,10 +56,10 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
                 }
                 design.requests.onReceive {
                     when (it) {
-                        PropertiesDesign.Request.BrowseFiles -> {
+                        PropertiesComposeDesign.Request.BrowseFiles -> {
                             startActivity(FilesActivity::class.intent.setUUID(uuid))
                         }
-                        PropertiesDesign.Request.Commit -> {
+                        PropertiesComposeDesign.Request.Commit -> {
                             design.verifyAndCommit()
                         }
                     }
@@ -80,7 +79,9 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
         } ?: return super.onBackPressed()
     }
 
-    private suspend fun PropertiesDesign.verifyAndCommit() {
+    private suspend fun PropertiesComposeDesign.verifyAndCommit() {
+        val profile = profile ?: return
+
         when {
             profile.name.isBlank() -> {
                 showToast(R.string.empty_name, ToastDuration.Long)

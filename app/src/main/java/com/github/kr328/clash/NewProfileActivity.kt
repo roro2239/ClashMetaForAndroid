@@ -10,7 +10,6 @@ import androidx.lifecycle.lifecycleScope
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setUUID
-import com.github.kr328.clash.design.NewProfileDesign
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.model.ProfileProvider
 import com.github.kr328.clash.design.util.showExceptionToast
@@ -29,14 +28,14 @@ import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 import java.util.*
 
-class NewProfileActivity : BaseActivity<NewProfileDesign>() {
+class NewProfileActivity : BaseActivity<NewProfileComposeDesign>() {
     private val self: NewProfileActivity
         get() = this
 
     private val scanLauncher = registerForActivityResult(ScanQRCode(), ::scanResultHandler)
 
     override suspend fun main() {
-        val design = NewProfileDesign(this)
+        val design = NewProfileComposeDesign(this)
 
         design.patchProviders(queryProfileProviders())
 
@@ -49,7 +48,7 @@ class NewProfileActivity : BaseActivity<NewProfileDesign>() {
                 }
                 design.requests.onReceive {
                     when (it) {
-                        is NewProfileDesign.Request.Create -> {
+                        is NewProfileComposeDesign.Request.Create -> {
                             withProfile {
                                 val name = getString(R.string.new_profile)
 
@@ -86,11 +85,11 @@ class NewProfileActivity : BaseActivity<NewProfileDesign>() {
                             }
                         }
 
-                        is NewProfileDesign.Request.OpenDetail -> {
+                        is NewProfileComposeDesign.Request.OpenDetail -> {
                             launchAppDetailed(it.provider)
                         }
 
-                        is NewProfileDesign.Request.LaunchScanner -> {
+                        is NewProfileComposeDesign.Request.LaunchScanner -> {
                             scanLauncher.launch(null)
                         }
                     }

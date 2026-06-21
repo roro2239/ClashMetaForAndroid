@@ -4,6 +4,7 @@ kotlin = "2.1.0"
 ksp = "2.1.0-1.0.29"
 golang = "1.0.4"
 coroutine = "1.10.1"
+composeBom = "2025.09.00"
 coreKtx = "1.8.0"
 activity = "1.5.0"
 fragment = "1.5.0"
@@ -27,6 +28,13 @@ build-ksp = { module = "com.google.devtools.ksp:symbol-processing-gradle-plugin"
 build-golang = { module = "com.github.kr328.golang:gradle-plugin", version.ref = "golang" }
 kotlin-coroutine = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutine" }
 kotlin-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+androidx-compose-foundation = { module = "androidx.compose.foundation:foundation" }
+androidx-compose-material-icons = { module = "androidx.compose.material:material-icons-extended" }
+androidx-compose-material3 = { module = "androidx.compose.material3:material3" }
+androidx-compose-ui = { module = "androidx.compose.ui:ui" }
+androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 androidx-core = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-activity = { module = "androidx.activity:activity", version.ref = "activity" }
 androidx-fragment = { module = "androidx.fragment:fragment", version.ref = "fragment" }
@@ -45,3 +53,4 @@ quickie-bundled = { group = "io.github.g00fy2.quickie", name = "quickie-bundled"
 androidx-activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "androidx-activity-ktx" }
 
 [plugins]
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

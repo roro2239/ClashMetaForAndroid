@@ -7,7 +7,6 @@ import android.content.IntentFilter
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setUUID
 import com.github.kr328.clash.common.util.ticker
-import com.github.kr328.clash.design.ProfilesDesign
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.util.withProfile
@@ -20,9 +19,9 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 import com.github.kr328.clash.design.R
 
-class ProfilesActivity : BaseActivity<ProfilesDesign>() {
+class ProfilesActivity : BaseActivity<ProfilesComposeDesign>() {
     override suspend fun main() {
-        val design = ProfilesDesign(this)
+        val design = ProfilesComposeDesign(this)
 
         setContentDesign(design)
 
@@ -40,9 +39,9 @@ class ProfilesActivity : BaseActivity<ProfilesDesign>() {
                 }
                 design.requests.onReceive {
                     when (it) {
-                        ProfilesDesign.Request.Create ->
+                        ProfilesComposeDesign.Request.Create ->
                             startActivity(NewProfileActivity::class.intent)
-                        ProfilesDesign.Request.UpdateAll ->
+                        ProfilesComposeDesign.Request.UpdateAll ->
                             withProfile {
                                 try {
                                     queryAll().forEach { p ->
@@ -56,13 +55,13 @@ class ProfilesActivity : BaseActivity<ProfilesDesign>() {
                                     }
                                 }
                             }
-                        is ProfilesDesign.Request.Update ->
+                        is ProfilesComposeDesign.Request.Update ->
                             withProfile { update(it.profile.uuid) }
-                        is ProfilesDesign.Request.Delete ->
+                        is ProfilesComposeDesign.Request.Delete ->
                             withProfile { delete(it.profile.uuid) }
-                        is ProfilesDesign.Request.Edit ->
+                        is ProfilesComposeDesign.Request.Edit ->
                             startActivity(PropertiesActivity::class.intent.setUUID(it.profile.uuid))
-                        is ProfilesDesign.Request.Active -> {
+                        is ProfilesComposeDesign.Request.Active -> {
                             withProfile {
                                 if (it.profile.imported)
                                     setActive(it.profile)
@@ -70,7 +69,7 @@ class ProfilesActivity : BaseActivity<ProfilesDesign>() {
                                     design.requestSave(it.profile)
                             }
                         }
-                        is ProfilesDesign.Request.Duplicate -> {
+                        is ProfilesComposeDesign.Request.Duplicate -> {
                             val uuid = withProfile { clone(it.profile.uuid) }
 
                             startActivity(PropertiesActivity::class.intent.setUUID(uuid))
@@ -86,7 +85,7 @@ class ProfilesActivity : BaseActivity<ProfilesDesign>() {
         }
     }
 
-    private suspend fun ProfilesDesign.fetch() {
+    private suspend fun ProfilesComposeDesign.fetch() {
         withProfile {
             patchProfiles(queryAll())
         }

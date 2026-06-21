@@ -2,7 +2,6 @@ package com.github.kr328.clash
 
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.ticker
-import com.github.kr328.clash.design.ProvidersDesign
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.util.withClash
 import kotlinx.coroutines.isActive
@@ -11,10 +10,10 @@ import kotlinx.coroutines.selects.select
 import java.util.concurrent.TimeUnit
 import com.github.kr328.clash.design.R
 
-class ProvidersActivity : BaseActivity<ProvidersDesign>() {
+class ProvidersActivity : BaseActivity<ProvidersComposeDesign>() {
     override suspend fun main() {
         val providers = withClash { queryProviders().sorted() }
-        val design = ProvidersDesign(this, providers)
+        val design = ProvidersComposeDesign(this, providers)
 
         setContentDesign(design)
 
@@ -38,7 +37,7 @@ class ProvidersActivity : BaseActivity<ProvidersDesign>() {
                 }
                 design.requests.onReceive {
                     when (it) {
-                        is ProvidersDesign.Request.Update -> {
+                        is ProvidersComposeDesign.Request.Update -> {
                             launch {
                                 try {
                                     withClash {

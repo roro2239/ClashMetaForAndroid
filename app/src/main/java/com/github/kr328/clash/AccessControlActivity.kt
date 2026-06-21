@@ -7,7 +7,6 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import androidx.core.content.getSystemService
-import com.github.kr328.clash.design.AccessControlDesign
 import com.github.kr328.clash.design.model.AppInfo
 import com.github.kr328.clash.design.util.toAppInfo
 import com.github.kr328.clash.service.store.ServiceStore
@@ -19,7 +18,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 
-class AccessControlActivity : BaseActivity<AccessControlDesign>() {
+class AccessControlActivity : BaseActivity<AccessControlComposeDesign>() {
     override suspend fun main() {
         val service = ServiceStore(this)
 
@@ -41,11 +40,11 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
             }
         }
 
-        val design = AccessControlDesign(this, uiStore, selected)
+        val design = AccessControlComposeDesign(this, uiStore, selected)
 
         setContentDesign(design)
 
-        design.requests.send(AccessControlDesign.Request.ReloadApps)
+        design.requests.send(AccessControlComposeDesign.Request.ReloadApps)
 
         while (isActive) {
             select<Unit> {
@@ -54,11 +53,11 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
                 }
                 design.requests.onReceive {
                     when (it) {
-                        AccessControlDesign.Request.ReloadApps -> {
+                        AccessControlComposeDesign.Request.ReloadApps -> {
                             design.patchApps(loadApps(selected))
                         }
 
-                        AccessControlDesign.Request.SelectAll -> {
+                        AccessControlComposeDesign.Request.SelectAll -> {
                             val all = withContext(Dispatchers.Default) {
                                 design.apps.map(AppInfo::packageName)
                             }
@@ -69,13 +68,13 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
                             design.rebindAll()
                         }
 
-                        AccessControlDesign.Request.SelectNone -> {
+                        AccessControlComposeDesign.Request.SelectNone -> {
                             selected.clear()
 
                             design.rebindAll()
                         }
 
-                        AccessControlDesign.Request.SelectInvert -> {
+                        AccessControlComposeDesign.Request.SelectInvert -> {
                             val all = withContext(Dispatchers.Default) {
                                 design.apps.map(AppInfo::packageName).toSet() - selected
                             }
@@ -86,7 +85,7 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
                             design.rebindAll()
                         }
 
-                        AccessControlDesign.Request.Import -> {
+                        AccessControlComposeDesign.Request.Import -> {
                             val clipboard = getSystemService<ClipboardManager>()
                             val data = clipboard?.primaryClip
 
@@ -101,7 +100,7 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
                             design.rebindAll()
                         }
 
-                        AccessControlDesign.Request.Export -> {
+                        AccessControlComposeDesign.Request.Export -> {
                             val clipboard = getSystemService<ClipboardManager>()
 
                             val data = ClipData.newPlainText(

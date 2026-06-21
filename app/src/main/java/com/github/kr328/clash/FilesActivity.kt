@@ -12,7 +12,6 @@ import androidx.core.content.ContextCompat
 import com.github.kr328.clash.common.util.grantPermissions
 import com.github.kr328.clash.common.util.ticker
 import com.github.kr328.clash.common.util.uuid
-import com.github.kr328.clash.design.FilesDesign
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.remote.FilesClient
 import com.github.kr328.clash.service.model.Profile
@@ -23,13 +22,13 @@ import kotlinx.coroutines.selects.select
 import java.util.*
 import java.util.concurrent.TimeUnit
 
-class FilesActivity : BaseActivity<FilesDesign>() {
+class FilesActivity : BaseActivity<FilesComposeDesign>() {
     override suspend fun main() {
         val uuid = intent.uuid ?: return finish()
         val profile = withProfile { queryByUUID(uuid) } ?: return finish()
         val root = uuid.toString()
 
-        val design = FilesDesign(this)
+        val design = FilesComposeDesign(this)
         val client = FilesClient(this)
         val stack = Stack<String>()
 
@@ -53,17 +52,17 @@ class FilesActivity : BaseActivity<FilesDesign>() {
                 design.requests.onReceive {
                     try {
                         when (it) {
-                            FilesDesign.Request.PopStack -> {
+                            FilesComposeDesign.Request.PopStack -> {
                                 if (stack.empty()) {
                                     finish()
                                 } else {
                                     stack.pop()
                                 }
                             }
-                            is FilesDesign.Request.OpenDirectory -> {
+                            is FilesComposeDesign.Request.OpenDirectory -> {
                                 stack.push(it.file.id)
                             }
-                            is FilesDesign.Request.OpenFile -> {
+                            is FilesComposeDesign.Request.OpenFile -> {
                                 startActivityForResult(
                                     ActivityResultContracts.StartActivityForResult(),
                                     Intent(Intent.ACTION_VIEW).setDataAndType(
@@ -72,15 +71,15 @@ class FilesActivity : BaseActivity<FilesDesign>() {
                                     ).grantPermissions()
                                 )
                             }
-                            is FilesDesign.Request.DeleteFile -> {
+                            is FilesComposeDesign.Request.DeleteFile -> {
                                 client.deleteDocument(it.file.id)
                             }
-                            is FilesDesign.Request.RenameFile -> {
+                            is FilesComposeDesign.Request.RenameFile -> {
                                 val newName = design.requestFileName(it.file.name)
 
                                 client.renameDocument(it.file.id, newName)
                             }
-                            is FilesDesign.Request.ImportFile -> {
+                            is FilesComposeDesign.Request.ImportFile -> {
                                 val uri: Uri? = startActivityForResult(
                                     ActivityResultContracts.GetContent(),
                                     "*/*"
@@ -96,7 +95,7 @@ class FilesActivity : BaseActivity<FilesDesign>() {
                                     }
                                 }
                             }
-                            is FilesDesign.Request.ExportFile -> {
+                            is FilesComposeDesign.Request.ExportFile -> {
                                 val uri: Uri? = startActivityForResult(
                                     ActivityResultContracts.CreateDocument("text/plain"),
                                     it.file.name
@@ -123,10 +122,10 @@ class FilesActivity : BaseActivity<FilesDesign>() {
     }
 
     override fun onBackPressed() {
-        design?.requests?.trySend(FilesDesign.Request.PopStack)
+        design?.requests?.trySend(FilesComposeDesign.Request.PopStack)
     }
 
-    private suspend fun FilesDesign.fetch(client: FilesClient, stack: Stack<String>, root: String) {
+    private suspend fun FilesComposeDesign.fetch(client: FilesClient, stack: Stack<String>, root: String) {
         val documentId = stack.lastOrNull() ?: root
         val files = if (stack.empty()) {
             val list = client.list(documentId)

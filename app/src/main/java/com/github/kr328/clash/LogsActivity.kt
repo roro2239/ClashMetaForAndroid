@@ -2,7 +2,6 @@ package com.github.kr328.clash
 
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setFileName
-import com.github.kr328.clash.design.LogsDesign
 import com.github.kr328.clash.design.model.LogFile
 import com.github.kr328.clash.util.logsDir
 import kotlinx.coroutines.Dispatchers
@@ -10,10 +9,10 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 
-class LogsActivity : BaseActivity<LogsDesign>() {
+class LogsActivity : BaseActivity<LogsComposeDesign>() {
 
     override suspend fun main() {
-        val design = LogsDesign(this)
+        val design = LogsComposeDesign(this)
 
         setContentDesign(design)
 
@@ -33,20 +32,18 @@ class LogsActivity : BaseActivity<LogsDesign>() {
                 }
                 design.requests.onReceive {
                     when (it) {
-                        LogsDesign.Request.StartLogcat -> {
+                        LogsComposeDesign.Request.StartLogcat -> {
                             startActivity(LogcatActivity::class.intent)
                             finish()
                         }
-                        LogsDesign.Request.DeleteAll -> {
-                            if (design.requestDeleteAll()) {
-                                withContext(Dispatchers.IO) {
-                                    deleteAllLogs()
-                                }
-
-                                events.trySend(Event.ActivityStart)
+                        LogsComposeDesign.Request.DeleteAll -> {
+                            withContext(Dispatchers.IO) {
+                                deleteAllLogs()
                             }
+
+                            events.trySend(Event.ActivityStart)
                         }
-                        is LogsDesign.Request.OpenFile -> {
+                        is LogsComposeDesign.Request.OpenFile -> {
                             startActivity(LogcatActivity::class.intent.setFileName(it.file.fileName))
                         }
                     }

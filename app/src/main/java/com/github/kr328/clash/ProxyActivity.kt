@@ -3,7 +3,6 @@ package com.github.kr328.clash
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.Proxy
-import com.github.kr328.clash.design.ProxyDesign
 import com.github.kr328.clash.design.model.ProxyState
 import com.github.kr328.clash.util.withClash
 import kotlinx.coroutines.isActive
@@ -12,7 +11,7 @@ import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 
-class ProxyActivity : BaseActivity<ProxyDesign>() {
+class ProxyActivity : BaseActivity<ProxyComposeDesign>() {
     override suspend fun main() {
         val mode = withClash { queryOverride(Clash.OverrideSlot.Session).mode }
         val names = withClash { queryProxyGroupNames(uiStore.proxyExcludeNotSelectable) }
@@ -20,7 +19,7 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
         val unorderedStates = names.indices.map { names[it] to states[it] }.toMap()
         val reloadLock = Semaphore(10)
 
-        val design = ProxyDesign(
+        val design = ProxyComposeDesign(
             this,
             mode,
             names,
@@ -29,7 +28,7 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
 
         setContentDesign(design)
 
-        design.requests.send(ProxyDesign.Request.ReloadAll)
+        design.requests.send(ProxyComposeDesign.Request.ReloadAll)
 
         while (isActive) {
             select<Unit> {
@@ -51,17 +50,17 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
                 }
                 design.requests.onReceive {
                     when (it) {
-                        ProxyDesign.Request.ReLaunch -> {
+                        ProxyComposeDesign.Request.ReLaunch -> {
                             startActivity(ProxyActivity::class.intent)
 
                             finish()
                         }
-                        ProxyDesign.Request.ReloadAll -> {
+                        ProxyComposeDesign.Request.ReloadAll -> {
                             names.indices.forEach { idx ->
-                                design.requests.trySend(ProxyDesign.Request.Reload(idx))
+                                design.requests.trySend(ProxyComposeDesign.Request.Reload(idx))
                             }
                         }
-                        is ProxyDesign.Request.Reload -> {
+                        is ProxyComposeDesign.Request.Reload -> {
                             launch {
                                 val group = reloadLock.withPermit {
                                     withClash {
@@ -81,7 +80,7 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
                                 )
                             }
                         }
-                        is ProxyDesign.Request.Select -> {
+                        is ProxyComposeDesign.Request.Select -> {
                             withClash {
                                 patchSelector(names[it.index], it.name)
 
@@ -90,16 +89,16 @@ class ProxyActivity : BaseActivity<ProxyDesign>() {
 
                             design.requestRedrawVisible()
                         }
-                        is ProxyDesign.Request.UrlTest -> {
+                        is ProxyComposeDesign.Request.UrlTest -> {
                             launch {
                                 withClash {
                                     healthCheck(names[it.index])
                                 }
 
-                                design.requests.send(ProxyDesign.Request.Reload(it.index))
+                                design.requests.send(ProxyComposeDesign.Request.Reload(it.index))
                             }
                         }
-                        is ProxyDesign.Request.PatchMode -> {
+                        is ProxyComposeDesign.Request.PatchMode -> {
                             design.showModeSwitchTips()
 
                             withClash {
