@@ -1,31 +1,51 @@
 package com.github.kr328.clash
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import android.content.Context
 import android.view.View
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.design.Design
@@ -37,14 +57,12 @@ import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
-import top.yukonga.miuix.kmp.basic.HorizontalDivider
-import top.yukonga.miuix.kmp.basic.NavigationBar
-import top.yukonga.miuix.kmp.basic.NavigationBarDisplayMode
-import top.yukonga.miuix.kmp.basic.NavigationBarItem
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.TabRow
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Contacts
 import top.yukonga.miuix.kmp.icon.extended.More
@@ -189,29 +207,43 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
 
     @Composable
     private fun MainContent() {
+        val scope = rememberCoroutineScope()
+        val scrollBehavior = MiuixScrollBehavior()
         val pagerState = rememberPagerState(
             initialPage = selectedPage,
             pageCount = { Destination.entries.size },
         )
+        var targetPage by remember { mutableIntStateOf(selectedPage) }
 
         LaunchedEffect(selectedPage) {
+            targetPage = selectedPage
             pagerState.scrollToPage(selectedPage)
         }
 
+        fun navigateTo(index: Int) {
+            val page = index.coerceIn(0, Destination.entries.lastIndex)
+            if (targetPage == page) return
+
+            scope.launch {
+                targetPage = page
+                pagerState.animateScrollToPage(page)
+                selectedPage = page
+            }
+        }
+
         Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = Destination.entries[targetPage].label(),
+                    scrollBehavior = scrollBehavior,
+                )
+            },
             bottomBar = {
-                NavigationBar(mode = NavigationBarDisplayMode.IconWithSelectedLabel) {
-                    Destination.entries.forEachIndexed { index, destination ->
-                        NavigationBarItem(
-                            selected = selectedPage == index,
-                            onClick = {
-                                selectedPage = index
-                            },
-                            icon = destination.icon,
-                            label = destination.label(),
-                        )
-                    }
-                }
+                FloatingNavigationBar(
+                    selectedPage = targetPage,
+                    bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+                    onSelected = ::navigateTo,
+                )
             },
         ) { innerPadding ->
             HorizontalPager(
@@ -221,10 +253,10 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
                 userScrollEnabled = false,
             ) { page ->
                 when (Destination.entries[page]) {
-                    Destination.Home -> HomePage(innerPadding)
-                    Destination.Proxy -> ProxyPage(innerPadding)
-                    Destination.Profiles -> ProfilesPage(innerPadding)
-                    Destination.Settings -> SettingsPage(innerPadding)
+                    Destination.Home -> HomePage(innerPadding, scrollBehavior.nestedScrollConnection)
+                    Destination.Proxy -> ProxyPage(innerPadding, scrollBehavior.nestedScrollConnection)
+                    Destination.Profiles -> ProfilesPage(innerPadding, scrollBehavior.nestedScrollConnection)
+                    Destination.Settings -> SettingsPage(innerPadding, scrollBehavior.nestedScrollConnection)
                 }
             }
         }
@@ -242,25 +274,96 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
     }
 
     @Composable
-    private fun HomePage(innerPadding: PaddingValues) {
+    private fun FloatingNavigationBar(
+        selectedPage: Int,
+        bottomPadding: Dp,
+        onSelected: (Int) -> Unit,
+    ) {
+        val tabWidth = 76.dp
+        val indicatorOffset by animateDpAsState(
+            targetValue = tabWidth * selectedPage.toFloat(),
+            label = "floatingNavigationIndicatorOffset",
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = bottomPadding + 12.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(tabWidth * Destination.entries.size.toFloat() + 8.dp)
+                    .height(64.dp)
+                    .clip(CircleShape)
+                    .background(MiuixTheme.colorScheme.surfaceContainer)
+                    .padding(4.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .offset(x = indicatorOffset)
+                        .width(tabWidth)
+                        .fillMaxHeight()
+                        .clip(CircleShape)
+                        .background(MiuixTheme.colorScheme.primary.copy(alpha = 0.16f))
+                )
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Destination.entries.forEachIndexed { index, destination ->
+                        val selected = selectedPage == index
+                        val itemColor by animateColorAsState(
+                            targetValue = if (selected) {
+                                MiuixTheme.colorScheme.primary
+                            } else {
+                                MiuixTheme.colorScheme.onSurface
+                            },
+                            label = "floatingNavigationItemColor",
+                        )
+                        Column(
+                            modifier = Modifier
+                                .width(tabWidth)
+                                .fillMaxHeight()
+                                .clip(CircleShape)
+                                .clickable { onSelected(index) },
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Icon(
+                                imageVector = destination.icon,
+                                contentDescription = destination.label(),
+                                tint = itemColor,
+                            )
+                            Text(
+                                text = destination.label(),
+                                style = MiuixTheme.textStyles.footnote1,
+                                color = itemColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun HomePage(innerPadding: PaddingValues, nestedScrollConnection: NestedScrollConnection) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(nestedScrollConnection),
             contentPadding = PaddingValues(
                 start = 20.dp,
-                top = innerPadding.calculateTopPadding() + 20.dp,
+                top = innerPadding.calculateTopPadding() + 12.dp,
                 end = 20.dp,
                 bottom = innerPadding.calculateBottomPadding() + 20.dp,
             ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item {
-                Text(
-                    text = context.getString(com.github.kr328.clash.design.R.string.application_name),
-                    style = MiuixTheme.textStyles.title1,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-
             item {
                 Card(
                     colors = CardDefaults.defaultColors(
@@ -338,11 +441,11 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
     }
 
     @Composable
-    private fun ProxyPage(innerPadding: PaddingValues) {
+    private fun ProxyPage(innerPadding: PaddingValues, nestedScrollConnection: NestedScrollConnection) {
         if (proxyGroups.isEmpty()) {
             EmptyPage(
                 innerPadding = innerPadding,
-                title = context.getString(com.github.kr328.clash.design.R.string.proxy),
+                nestedScrollConnection = nestedScrollConnection,
                 summary = context.getString(com.github.kr328.clash.design.R.string.proxy_empty_tips),
             )
             return
@@ -356,8 +459,6 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
                 .fillMaxSize()
                 .padding(top = innerPadding.calculateTopPadding()),
         ) {
-            PageHeader(context.getString(com.github.kr328.clash.design.R.string.proxy))
-
             Column(
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -383,6 +484,7 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
                     index = index,
                     group = proxyGroups[index],
                     bottomPadding = innerPadding.calculateBottomPadding(),
+                    nestedScrollConnection = nestedScrollConnection,
                 )
             }
         }
@@ -417,9 +519,16 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
     }
 
     @Composable
-    private fun ProxyGroupPage(index: Int, group: ProxyGroupState, bottomPadding: androidx.compose.ui.unit.Dp) {
+    private fun ProxyGroupPage(
+        index: Int,
+        group: ProxyGroupState,
+        bottomPadding: androidx.compose.ui.unit.Dp,
+        nestedScrollConnection: NestedScrollConnection,
+    ) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(nestedScrollConnection),
             contentPadding = PaddingValues(
                 start = 20.dp,
                 top = 12.dp,
@@ -509,20 +618,19 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
     }
 
     @Composable
-    private fun ProfilesPage(innerPadding: PaddingValues) {
+    private fun ProfilesPage(innerPadding: PaddingValues, nestedScrollConnection: NestedScrollConnection) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(nestedScrollConnection),
             contentPadding = PaddingValues(
                 start = 20.dp,
-                top = innerPadding.calculateTopPadding() + 20.dp,
+                top = innerPadding.calculateTopPadding() + 12.dp,
                 end = 20.dp,
                 bottom = innerPadding.calculateBottomPadding() + 20.dp,
             ),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            item {
-                PageHeader(context.getString(com.github.kr328.clash.design.R.string.profile))
-            }
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
@@ -601,60 +709,56 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
     }
 
     @Composable
-    private fun SettingsPage(innerPadding: PaddingValues) {
+    private fun SettingsPage(innerPadding: PaddingValues, nestedScrollConnection: NestedScrollConnection) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(nestedScrollConnection),
             contentPadding = PaddingValues(
                 start = 20.dp,
-                top = innerPadding.calculateTopPadding() + 20.dp,
+                top = innerPadding.calculateTopPadding() + 12.dp,
                 end = 20.dp,
                 bottom = innerPadding.calculateBottomPadding() + 20.dp,
             ),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
-                PageHeader(context.getString(com.github.kr328.clash.design.R.string.settings))
-            }
-            item {
-                SettingsItem(context.getString(com.github.kr328.clash.design.R.string.app)) {
+                SettingsItem(
+                    icon = MiuixIcons.Settings,
+                    title = context.getString(com.github.kr328.clash.design.R.string.app),
+                    summary = "应用行为与服务显示",
+                ) {
                     send(Request.StartAppSettings)
                 }
             }
             item {
-                SettingsItem(context.getString(com.github.kr328.clash.design.R.string.network)) {
+                SettingsItem(
+                    icon = MiuixIcons.VerticalSplit,
+                    title = context.getString(com.github.kr328.clash.design.R.string.network),
+                    summary = "VPN、代理与访问控制",
+                ) {
                     send(Request.StartNetworkSettings)
                 }
             }
             item {
-                SettingsItem(context.getString(com.github.kr328.clash.design.R.string.override)) {
+                SettingsItem(
+                    icon = MiuixIcons.More,
+                    title = context.getString(com.github.kr328.clash.design.R.string.override),
+                    summary = "配置覆写与高级参数",
+                ) {
                     send(Request.StartOverrideSettings)
                 }
             }
             item {
-                SettingsItem(context.getString(com.github.kr328.clash.design.R.string.meta_features)) {
+                SettingsItem(
+                    icon = MiuixIcons.Contacts,
+                    title = context.getString(com.github.kr328.clash.design.R.string.meta_features),
+                    summary = "Meta 特性与地理数据",
+                ) {
                     send(Request.StartMetaFeatureSettings)
                 }
             }
-            item {
-                SettingsItem(context.getString(com.github.kr328.clash.design.R.string.logs)) {
-                    send(Request.OpenLogs)
-                }
-            }
-            item {
-                SettingsItem(context.getString(com.github.kr328.clash.design.R.string.help)) {
-                    send(Request.OpenHelp)
-                }
-            }
         }
-    }
-
-    @Composable
-    private fun PageHeader(title: String) {
-        Text(
-            text = title,
-            style = MiuixTheme.textStyles.title2,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(bottom = 8.dp),
-        )
     }
 
     @Composable
@@ -669,39 +773,80 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
 
     @Composable
     private fun ActionItem(title: String, onClick: () -> Unit) {
-        SettingsItem(title = title, onClick = onClick)
+        SettingsItem(
+            icon = MiuixIcons.More,
+            title = title,
+            summary = "",
+            onClick = onClick,
+        )
     }
 
     @Composable
-    private fun SettingsItem(title: String, onClick: () -> Unit) {
-        Surface(onClick = onClick) {
-            Column(
+    private fun SettingsItem(
+        icon: ImageVector,
+        title: String,
+        summary: String,
+        onClick: () -> Unit,
+    ) {
+        Card(onClick = onClick) {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(text = title, style = MiuixTheme.textStyles.body1)
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MiuixTheme.colorScheme.primary,
+                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = title,
+                        style = MiuixTheme.textStyles.body1,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (summary.isNotBlank()) {
+                        Text(
+                            text = summary,
+                            style = MiuixTheme.textStyles.body2,
+                            color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
             }
         }
-        HorizontalDivider()
     }
 
     @Composable
-    private fun EmptyPage(innerPadding: PaddingValues, title: String, summary: String) {
-        Column(
+    private fun EmptyPage(
+        innerPadding: PaddingValues,
+        nestedScrollConnection: NestedScrollConnection,
+        summary: String,
+    ) {
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(
-                    start = 20.dp,
-                    top = innerPadding.calculateTopPadding() + 20.dp,
-                    end = 20.dp,
-                    bottom = innerPadding.calculateBottomPadding() + 20.dp,
-                ),
+                .nestedScroll(nestedScrollConnection),
+            contentPadding = PaddingValues(
+                start = 20.dp,
+                top = innerPadding.calculateTopPadding() + 12.dp,
+                end = 20.dp,
+                bottom = innerPadding.calculateBottomPadding() + 20.dp,
+            ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            PageHeader(title)
-            Text(text = summary, style = MiuixTheme.textStyles.body1)
+            item {
+                Text(text = summary, style = MiuixTheme.textStyles.body1)
+            }
         }
     }
 

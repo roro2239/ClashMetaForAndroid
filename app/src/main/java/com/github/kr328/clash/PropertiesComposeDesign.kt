@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Label
@@ -26,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,6 +41,7 @@ import com.github.kr328.clash.design.util.ValidatorHttpUrl
 import com.github.kr328.clash.design.util.ValidatorNotBlank
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.ui.ClashMiuixDialog
+import com.github.kr328.clash.ui.ClashMiuixPageScaffold
 import com.github.kr328.clash.ui.ClashMiuixTheme
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
@@ -51,9 +52,7 @@ import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
@@ -198,36 +197,26 @@ class PropertiesComposeDesign(context: Context) : Design<PropertiesComposeDesign
 
     @Composable
     private fun PageContent() {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = context.getString(com.github.kr328.clash.design.R.string.properties),
-                    navigationIcon = {
-                        IconButton(onClick = { (context as? Activity)?.onBackPressed() }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
-                            )
-                        }
-                    },
-                    actions = {
-                        if (progressing) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.padding(12.dp),
-                                strokeWidth = 2.dp,
-                            )
-                        } else {
-                            IconButton(onClick = { requestCommit() }) {
-                                Icon(
-                                    imageVector = Icons.Default.Save,
-                                    contentDescription = context.getString(com.github.kr328.clash.design.R.string.save),
-                                )
-                            }
-                        }
-                    },
-                )
+        ClashMiuixPageScaffold(
+            title = context.getString(com.github.kr328.clash.design.R.string.properties),
+            backContentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
+            onBack = { (context as? Activity)?.onBackPressed() },
+            actions = {
+                if (progressing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(12.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    IconButton(onClick = { requestCommit() }) {
+                        Icon(
+                            imageVector = Icons.Default.Save,
+                            contentDescription = context.getString(com.github.kr328.clash.design.R.string.save),
+                        )
+                    }
+                }
             },
-        ) { innerPadding ->
+        ) { innerPadding, nestedScrollConnection ->
             ExitConfirmDialog()
 
             val current = profile
@@ -236,6 +225,7 @@ class PropertiesComposeDesign(context: Context) : Design<PropertiesComposeDesign
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .nestedScroll(nestedScrollConnection)
                         .verticalScroll(rememberScrollState())
                         .padding(
                             PaddingValues(

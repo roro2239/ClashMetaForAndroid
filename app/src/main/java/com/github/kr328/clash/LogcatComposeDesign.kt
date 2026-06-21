@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.text.font.FontFamily
@@ -31,6 +32,7 @@ import com.github.kr328.clash.core.model.LogMessage
 import com.github.kr328.clash.design.Design
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.util.format
+import com.github.kr328.clash.ui.ClashMiuixPageScaffold
 import com.github.kr328.clash.ui.ClashMiuixTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -38,11 +40,8 @@ import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.icon.extended.UploadCloud
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -82,47 +81,37 @@ class LogcatComposeDesign(
             }
         }
 
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = context.getString(com.github.kr328.clash.design.R.string.logs),
-                    navigationIcon = {
-                        IconButton(
-                            onClick = {
-                                if (streaming) {
-                                    requests.trySend(Request.Close)
-                                } else {
-                                    (context as? Activity)?.onBackPressed()
-                                }
-                            },
-                        ) {
-                            Icon(
-                                imageVector = MiuixIcons.Back,
-                                contentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
-                            )
-                        }
-                    },
-                    actions = {
-                        if (!streaming) {
-                            IconButton(onClick = { requests.trySend(Request.Delete) }) {
-                                Icon(
-                                    imageVector = MiuixIcons.Delete,
-                                    contentDescription = context.getString(com.github.kr328.clash.design.R.string.delete),
-                                )
-                            }
-                            IconButton(onClick = { requests.trySend(Request.Export) }) {
-                                Icon(
-                                    imageVector = MiuixIcons.UploadCloud,
-                                    contentDescription = context.getString(com.github.kr328.clash.design.R.string.export),
-                                )
-                            }
-                        }
-                    },
-                )
+        ClashMiuixPageScaffold(
+            title = context.getString(com.github.kr328.clash.design.R.string.logs),
+            backContentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
+            onBack = {
+                if (streaming) {
+                    requests.trySend(Request.Close)
+                } else {
+                    (context as? Activity)?.onBackPressed()
+                }
             },
-        ) { innerPadding ->
+            actions = {
+                if (!streaming) {
+                    IconButton(onClick = { requests.trySend(Request.Delete) }) {
+                        Icon(
+                            imageVector = MiuixIcons.Delete,
+                            contentDescription = context.getString(com.github.kr328.clash.design.R.string.delete),
+                        )
+                    }
+                    IconButton(onClick = { requests.trySend(Request.Export) }) {
+                        Icon(
+                            imageVector = MiuixIcons.UploadCloud,
+                            contentDescription = context.getString(com.github.kr328.clash.design.R.string.export),
+                        )
+                    }
+                }
+            },
+        ) { innerPadding, nestedScrollConnection ->
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(nestedScrollConnection),
                 state = listState,
                 contentPadding = PaddingValues(
                     start = 12.dp,

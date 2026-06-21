@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.text.style.TextOverflow
@@ -23,16 +24,14 @@ import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.model.AccessControlMode
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.ui.ClashMiuixDialog
+import com.github.kr328.clash.ui.ClashMiuixPageScaffold
 import com.github.kr328.clash.ui.ClashMiuixTheme
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.AppRecording
-import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Link
 import top.yukonga.miuix.kmp.icon.extended.Lock
 import top.yukonga.miuix.kmp.icon.extended.Settings
@@ -84,23 +83,15 @@ class NetworkSettingsComposeDesign(
     private fun PageContent() {
         val vpnOptionsEnabled = enableVpn && !running
 
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = context.getString(com.github.kr328.clash.design.R.string.network),
-                    navigationIcon = {
-                        IconButton(onClick = { (context as? Activity)?.onBackPressed() }) {
-                            Icon(
-                                imageVector = MiuixIcons.Back,
-                                contentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
-                            )
-                        }
-                    },
-                )
-            },
-        ) { innerPadding ->
+        ClashMiuixPageScaffold(
+            title = context.getString(com.github.kr328.clash.design.R.string.network),
+            backContentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
+            onBack = { (context as? Activity)?.onBackPressed() },
+        ) { innerPadding, nestedScrollConnection ->
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(nestedScrollConnection),
                 contentPadding = PaddingValues(
                     start = 16.dp,
                     top = innerPadding.calculateTopPadding() + 12.dp,
@@ -110,77 +101,71 @@ class NetworkSettingsComposeDesign(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 item {
-                    SwitchItem(
-                        icon = MiuixIcons.Lock,
-                        title = context.getString(com.github.kr328.clash.design.R.string.route_system_traffic),
-                        summary = context.getString(com.github.kr328.clash.design.R.string.routing_via_vpn_service),
-                        checked = enableVpn,
-                        enabled = !running,
-                    ) {
-                        enableVpn = it
-                        uiStore.enableVpn = it
+                    Card {
+                        SwitchItem(
+                            icon = MiuixIcons.Lock,
+                            title = context.getString(com.github.kr328.clash.design.R.string.route_system_traffic),
+                            summary = context.getString(com.github.kr328.clash.design.R.string.routing_via_vpn_service),
+                            checked = enableVpn,
+                            enabled = !running,
+                        ) {
+                            enableVpn = it
+                            uiStore.enableVpn = it
+                        }
                     }
                 }
                 item { CategoryTitle(context.getString(com.github.kr328.clash.design.R.string.vpn_service_options)) }
                 item {
-                    SwitchItem(MiuixIcons.Link, context.getString(com.github.kr328.clash.design.R.string.bypass_private_network), context.getString(com.github.kr328.clash.design.R.string.bypass_private_network_summary), bypassPrivateNetwork, vpnOptionsEnabled) {
-                        bypassPrivateNetwork = it
-                        srvStore.bypassPrivateNetwork = it
-                    }
-                }
-                item {
-                    SwitchItem(MiuixIcons.Link, context.getString(com.github.kr328.clash.design.R.string.dns_hijacking), context.getString(com.github.kr328.clash.design.R.string.dns_hijacking_summary), dnsHijacking, vpnOptionsEnabled) {
-                        dnsHijacking = it
-                        srvStore.dnsHijacking = it
-                    }
-                }
-                item {
-                    SwitchItem(MiuixIcons.Lock, context.getString(com.github.kr328.clash.design.R.string.allow_bypass), context.getString(com.github.kr328.clash.design.R.string.allow_bypass_summary), allowBypass, vpnOptionsEnabled) {
-                        allowBypass = it
-                        srvStore.allowBypass = it
-                    }
-                }
-                item {
-                    SwitchItem(MiuixIcons.Translate, context.getString(com.github.kr328.clash.design.R.string.allow_ipv6), context.getString(com.github.kr328.clash.design.R.string.allow_ipv6_summary), allowIpv6, vpnOptionsEnabled) {
-                        allowIpv6 = it
-                        srvStore.allowIpv6 = it
-                    }
-                }
-                if (Build.VERSION.SDK_INT >= 29) {
-                    item {
-                        SwitchItem(MiuixIcons.Settings, context.getString(com.github.kr328.clash.design.R.string.system_proxy), context.getString(com.github.kr328.clash.design.R.string.system_proxy_summary), systemProxy, vpnOptionsEnabled) {
-                            systemProxy = it
-                            srvStore.systemProxy = it
+                    Card {
+                        SwitchItem(MiuixIcons.Link, context.getString(com.github.kr328.clash.design.R.string.bypass_private_network), context.getString(com.github.kr328.clash.design.R.string.bypass_private_network_summary), bypassPrivateNetwork, vpnOptionsEnabled) {
+                            bypassPrivateNetwork = it
+                            srvStore.bypassPrivateNetwork = it
+                        }
+                        SwitchItem(MiuixIcons.Link, context.getString(com.github.kr328.clash.design.R.string.dns_hijacking), context.getString(com.github.kr328.clash.design.R.string.dns_hijacking_summary), dnsHijacking, vpnOptionsEnabled) {
+                            dnsHijacking = it
+                            srvStore.dnsHijacking = it
+                        }
+                        SwitchItem(MiuixIcons.Lock, context.getString(com.github.kr328.clash.design.R.string.allow_bypass), context.getString(com.github.kr328.clash.design.R.string.allow_bypass_summary), allowBypass, vpnOptionsEnabled) {
+                            allowBypass = it
+                            srvStore.allowBypass = it
+                        }
+                        SwitchItem(MiuixIcons.Translate, context.getString(com.github.kr328.clash.design.R.string.allow_ipv6), context.getString(com.github.kr328.clash.design.R.string.allow_ipv6_summary), allowIpv6, vpnOptionsEnabled) {
+                            allowIpv6 = it
+                            srvStore.allowIpv6 = it
+                        }
+                        if (Build.VERSION.SDK_INT >= 29) {
+                            SwitchItem(MiuixIcons.Settings, context.getString(com.github.kr328.clash.design.R.string.system_proxy), context.getString(com.github.kr328.clash.design.R.string.system_proxy_summary), systemProxy, vpnOptionsEnabled) {
+                                systemProxy = it
+                                srvStore.systemProxy = it
+                            }
                         }
                     }
                 }
                 item {
-                    ClickItem(
-                        icon = MiuixIcons.Settings,
-                        title = context.getString(com.github.kr328.clash.design.R.string.tun_stack_mode),
-                        summary = tunStackText(tunStackMode),
-                        enabled = vpnOptionsEnabled,
-                    ) {
-                        showTunStackDialog = true
-                    }
-                }
-                item {
-                    ClickItem(
-                        icon = MiuixIcons.AppRecording,
-                        title = context.getString(com.github.kr328.clash.design.R.string.access_control_mode),
-                        summary = accessModeText(accessControlMode),
-                        enabled = vpnOptionsEnabled,
-                    ) {
-                        showAccessModeDialog = true
-                    }
-                }
-                item {
-                    ClickItem(
-                        icon = MiuixIcons.AppRecording,
-                        title = context.getString(com.github.kr328.clash.design.R.string.access_control_packages),
-                        summary = context.getString(com.github.kr328.clash.design.R.string.access_control_packages_summary),
-                    ) {
-                        requests.trySend(Request.StartAccessControlList)
+                    Card {
+                        ClickItem(
+                            icon = MiuixIcons.Settings,
+                            title = context.getString(com.github.kr328.clash.design.R.string.tun_stack_mode),
+                            summary = tunStackText(tunStackMode),
+                            enabled = vpnOptionsEnabled,
+                        ) {
+                            showTunStackDialog = true
+                        }
+                        ClickItem(
+                            icon = MiuixIcons.AppRecording,
+                            title = context.getString(com.github.kr328.clash.design.R.string.access_control_mode),
+                            summary = accessModeText(accessControlMode),
+                            enabled = vpnOptionsEnabled,
+                        ) {
+                            showAccessModeDialog = true
+                        }
+                        ClickItem(
+                            icon = MiuixIcons.AppRecording,
+                            title = context.getString(com.github.kr328.clash.design.R.string.access_control_packages),
+                            summary = context.getString(com.github.kr328.clash.design.R.string.access_control_packages_summary),
+                        ) {
+                            requests.trySend(Request.StartAccessControlList)
+                        }
                     }
                 }
             }

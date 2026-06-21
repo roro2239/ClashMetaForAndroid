@@ -10,20 +10,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.Design
+import com.github.kr328.clash.ui.ClashMiuixPageScaffold
 import com.github.kr328.clash.ui.ClashMiuixTheme
-import top.yukonga.miuix.kmp.basic.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -46,25 +43,19 @@ class SettingsComposeDesign(context: Context) : Design<SettingsComposeDesign.Req
 
     @Composable
     private fun PageContent() {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = context.getString(com.github.kr328.clash.design.R.string.settings),
-                    navigationIcon = {
-                        IconButton(onClick = { (context as? Activity)?.onBackPressed() }) {
-                            Icon(
-                                imageVector = MiuixIcons.Back,
-                                contentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
-                            )
-                        }
-                    },
-                )
-            },
-        ) { innerPadding ->
+        ClashMiuixPageScaffold(
+            title = context.getString(com.github.kr328.clash.design.R.string.settings),
+            backContentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
+            onBack = { (context as? Activity)?.onBackPressed() },
+        ) { innerPadding, nestedScrollConnection ->
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(nestedScrollConnection),
                 contentPadding = PaddingValues(
-                    top = innerPadding.calculateTopPadding(),
+                    start = 16.dp,
+                    top = innerPadding.calculateTopPadding() + 12.dp,
+                    end = 16.dp,
                     bottom = innerPadding.calculateBottomPadding() + 16.dp,
                 ),
             ) {
@@ -86,7 +77,10 @@ class SettingsComposeDesign(context: Context) : Design<SettingsComposeDesign.Req
 
     @Composable
     private fun SettingsItem(titleRes: Int, request: Request) {
-        Surface(onClick = { requests.trySend(request) }) {
+        Card(
+            modifier = Modifier.padding(bottom = 10.dp),
+            onClick = { requests.trySend(request) },
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -102,6 +96,5 @@ class SettingsComposeDesign(context: Context) : Design<SettingsComposeDesign.Req
                 )
             }
         }
-        HorizontalDivider()
     }
 }

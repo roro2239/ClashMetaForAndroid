@@ -1,10 +1,8 @@
 package com.github.kr328.clash
 
-import android.content.ComponentName
 import android.content.pm.PackageManager
 import com.github.kr328.clash.common.util.componentName
 import com.github.kr328.clash.design.model.Behavior
-import com.github.kr328.clash.design.store.UiStore.Companion.mainActivityAlias
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.util.ApplicationObserver
 import kotlinx.coroutines.isActive
@@ -14,11 +12,9 @@ class AppSettingsActivity : BaseActivity<AppSettingsComposeDesign>(), Behavior {
     override suspend fun main() {
         val design = AppSettingsComposeDesign(
             this,
-            uiStore,
             ServiceStore(this),
             this,
             clashRunning,
-            ::onHideIconChange,
         )
 
         setContentDesign(design)
@@ -62,16 +58,4 @@ class AppSettingsActivity : BaseActivity<AppSettingsComposeDesign>(), Behavior {
             )
         }
 
-    private fun onHideIconChange(hide: Boolean) {
-        val newState = if (hide) {
-            PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-        } else {
-            PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-        }
-        packageManager.setComponentEnabledSetting(
-            mainActivityAlias,
-            newState,
-            PackageManager.DONT_KILL_APP
-        )
-    }
 }

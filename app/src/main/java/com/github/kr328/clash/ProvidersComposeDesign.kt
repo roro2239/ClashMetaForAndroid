@@ -16,6 +16,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.text.style.TextOverflow
@@ -23,16 +24,14 @@ import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.core.model.Provider
 import com.github.kr328.clash.design.Design
 import com.github.kr328.clash.design.util.elapsedIntervalString
+import com.github.kr328.clash.ui.ClashMiuixPageScaffold
 import com.github.kr328.clash.ui.ClashMiuixTheme
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Refresh
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -97,31 +96,23 @@ class ProvidersComposeDesign(
 
     @Composable
     private fun PageContent() {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = context.getString(com.github.kr328.clash.design.R.string.providers),
-                    navigationIcon = {
-                        IconButton(onClick = { (context as? Activity)?.onBackPressed() }) {
-                            Icon(
-                                imageVector = MiuixIcons.Back,
-                                contentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
-                            )
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { requestUpdateAll() }) {
-                            Icon(
-                                imageVector = MiuixIcons.Refresh,
-                                contentDescription = context.getString(com.github.kr328.clash.design.R.string.update),
-                            )
-                        }
-                    },
-                )
+        ClashMiuixPageScaffold(
+            title = context.getString(com.github.kr328.clash.design.R.string.providers),
+            backContentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
+            onBack = { (context as? Activity)?.onBackPressed() },
+            actions = {
+                IconButton(onClick = { requestUpdateAll() }) {
+                    Icon(
+                        imageVector = MiuixIcons.Refresh,
+                        contentDescription = context.getString(com.github.kr328.clash.design.R.string.update),
+                    )
+                }
             },
-        ) { innerPadding ->
+        ) { innerPadding, nestedScrollConnection ->
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(nestedScrollConnection),
                 contentPadding = PaddingValues(
                     start = 16.dp,
                     top = innerPadding.calculateTopPadding() + 12.dp,

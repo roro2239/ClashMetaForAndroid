@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.text.style.TextOverflow
@@ -23,16 +24,13 @@ import com.github.kr328.clash.design.Design
 import com.github.kr328.clash.design.model.LogFile
 import com.github.kr328.clash.design.util.format
 import com.github.kr328.clash.ui.ClashMiuixDialog
+import com.github.kr328.clash.ui.ClashMiuixPageScaffold
 import com.github.kr328.clash.ui.ClashMiuixTheme
-import top.yukonga.miuix.kmp.basic.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.icon.extended.Notes
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -62,49 +60,43 @@ class LogsComposeDesign(context: Context) : Design<LogsComposeDesign.Request>(co
 
     @Composable
     private fun PageContent() {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = context.getString(com.github.kr328.clash.design.R.string.logs),
-                    navigationIcon = {
-                        IconButton(onClick = { (context as? Activity)?.onBackPressed() }) {
-                            Icon(
-                                imageVector = MiuixIcons.Back,
-                                contentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
-                            )
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { requests.trySend(Request.StartLogcat) }) {
-                            Icon(
-                                imageVector = MiuixIcons.Notes,
-                                contentDescription = context.getString(com.github.kr328.clash.design.R.string.logcat),
-                            )
-                        }
-                        IconButton(onClick = { deleteAllDialogVisible = true }) {
-                            Icon(
-                                imageVector = MiuixIcons.Delete,
-                                contentDescription = context.getString(com.github.kr328.clash.design.R.string.delete_all_logs),
-                            )
-                        }
-                    },
-                )
+        ClashMiuixPageScaffold(
+            title = context.getString(com.github.kr328.clash.design.R.string.logs),
+            backContentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
+            onBack = { (context as? Activity)?.onBackPressed() },
+            actions = {
+                IconButton(onClick = { requests.trySend(Request.StartLogcat) }) {
+                    Icon(
+                        imageVector = MiuixIcons.Notes,
+                        contentDescription = context.getString(com.github.kr328.clash.design.R.string.logcat),
+                    )
+                }
+                IconButton(onClick = { deleteAllDialogVisible = true }) {
+                    Icon(
+                        imageVector = MiuixIcons.Delete,
+                        contentDescription = context.getString(com.github.kr328.clash.design.R.string.delete_all_logs),
+                    )
+                }
             },
-        ) { innerPadding ->
+        ) { innerPadding, nestedScrollConnection ->
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(nestedScrollConnection),
                 contentPadding = PaddingValues(
-                    top = innerPadding.calculateTopPadding(),
+                    start = 16.dp,
+                    top = innerPadding.calculateTopPadding() + 12.dp,
+                    end = 16.dp,
                     bottom = innerPadding.calculateBottomPadding() + 16.dp,
                 ),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 items(logs, key = { it.fileName }) { log ->
-                    Surface(onClick = { requests.trySend(Request.OpenFile(log)) }) {
+                    Card(onClick = { requests.trySend(Request.OpenFile(log)) }) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 14.dp),
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             Text(
@@ -120,7 +112,6 @@ class LogsComposeDesign(context: Context) : Design<LogsComposeDesign.Request>(co
                             )
                         }
                     }
-                    HorizontalDivider()
                 }
             }
         }

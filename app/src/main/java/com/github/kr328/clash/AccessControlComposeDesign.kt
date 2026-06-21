@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ContentPaste
@@ -26,6 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.state.ToggleableState
@@ -37,6 +37,7 @@ import com.github.kr328.clash.design.model.AppInfoSort
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.ui.ClashMiuixDialog
 import com.github.kr328.clash.ui.ClashMiuixMenuItem
+import com.github.kr328.clash.ui.ClashMiuixPageScaffold
 import com.github.kr328.clash.ui.ClashMiuixTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -44,11 +45,9 @@ import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
-import top.yukonga.miuix.kmp.basic.TopAppBar
 
 class AccessControlComposeDesign(
     context: Context,
@@ -95,39 +94,31 @@ class AccessControlComposeDesign(
 
     @Composable
     private fun PageContent() {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = context.getString(com.github.kr328.clash.design.R.string.access_control_packages),
-                    navigationIcon = {
-                        IconButton(onClick = { (context as? Activity)?.onBackPressed() }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
-                            )
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { searchVisible = true }) {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = context.getString(com.github.kr328.clash.design.R.string.search),
-                            )
-                        }
-                        IconButton(onClick = { menuExpanded = true }) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = context.getString(com.github.kr328.clash.design.R.string.properties),
-                            )
-                        }
-                        AccessControlMenu()
-                    },
-                )
+        ClashMiuixPageScaffold(
+            title = context.getString(com.github.kr328.clash.design.R.string.access_control_packages),
+            backContentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
+            onBack = { (context as? Activity)?.onBackPressed() },
+            actions = {
+                IconButton(onClick = { searchVisible = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = context.getString(com.github.kr328.clash.design.R.string.search),
+                    )
+                }
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = context.getString(com.github.kr328.clash.design.R.string.properties),
+                    )
+                }
+                AccessControlMenu()
             },
-        ) { innerPadding ->
+        ) { innerPadding, nestedScrollConnection ->
             AppsList(
                 data = apps,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(nestedScrollConnection),
                 contentPadding = PaddingValues(
                     start = 16.dp,
                     top = innerPadding.calculateTopPadding() + 12.dp,

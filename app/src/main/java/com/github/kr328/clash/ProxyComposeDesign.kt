@@ -13,15 +13,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.state.ToggleableState
@@ -36,6 +35,7 @@ import com.github.kr328.clash.design.model.ProxyState
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.ui.ClashMiuixDialog
 import com.github.kr328.clash.ui.ClashMiuixMenuItem
+import com.github.kr328.clash.ui.ClashMiuixPageScaffold
 import com.github.kr328.clash.ui.ClashMiuixTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -46,11 +46,11 @@ import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.TabRow
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.More
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 class ProxyComposeDesign(
@@ -128,36 +128,28 @@ class ProxyComposeDesign(
 
     @Composable
     private fun PageContent() {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = context.getString(com.github.kr328.clash.design.R.string.proxy),
-                    navigationIcon = {
-                        IconButton(onClick = { (context as? Activity)?.onBackPressed() }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
-                            )
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { menuExpanded = true }) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = context.getString(com.github.kr328.clash.design.R.string.properties),
-                            )
-                        }
-                        ProxyMenu()
-                    },
-                )
+        ClashMiuixPageScaffold(
+            title = context.getString(com.github.kr328.clash.design.R.string.proxy),
+            backContentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
+            onBack = { (context as? Activity)?.onBackPressed() },
+            actions = {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        imageVector = MiuixIcons.More,
+                        contentDescription = context.getString(com.github.kr328.clash.design.R.string.properties),
+                    )
+                }
+                ProxyMenu()
             },
-        ) { innerPadding ->
+        ) { innerPadding, nestedScrollConnection ->
             if (groups.isEmpty()) {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(nestedScrollConnection),
                     contentPadding = PaddingValues(
                         start = 20.dp,
-                        top = innerPadding.calculateTopPadding() + 20.dp,
+                        top = innerPadding.calculateTopPadding() + 12.dp,
                         end = 20.dp,
                         bottom = innerPadding.calculateBottomPadding() + 20.dp,
                     ),
@@ -167,13 +159,13 @@ class ProxyComposeDesign(
                     }
                 }
             } else {
-                ProxyContent(innerPadding)
+                ProxyContent(innerPadding, nestedScrollConnection)
             }
         }
     }
 
     @Composable
-    private fun ProxyContent(innerPadding: PaddingValues) {
+    private fun ProxyContent(innerPadding: PaddingValues, nestedScrollConnection: NestedScrollConnection) {
         val pagerState = rememberPagerState(pageCount = { groups.size })
         val scope = rememberCoroutineScope()
 
@@ -204,7 +196,12 @@ class ProxyComposeDesign(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
             ) { index ->
-                ProxyGroupPage(index, groups[index], innerPadding.calculateBottomPadding())
+                ProxyGroupPage(
+                    index = index,
+                    group = groups[index],
+                    bottomPadding = innerPadding.calculateBottomPadding(),
+                    nestedScrollConnection = nestedScrollConnection,
+                )
             }
         }
     }
@@ -242,9 +239,16 @@ class ProxyComposeDesign(
     }
 
     @Composable
-    private fun ProxyGroupPage(index: Int, group: GroupState, bottomPadding: androidx.compose.ui.unit.Dp) {
+    private fun ProxyGroupPage(
+        index: Int,
+        group: GroupState,
+        bottomPadding: androidx.compose.ui.unit.Dp,
+        nestedScrollConnection: NestedScrollConnection,
+    ) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(nestedScrollConnection),
             contentPadding = PaddingValues(
                 start = 20.dp,
                 top = 12.dp,

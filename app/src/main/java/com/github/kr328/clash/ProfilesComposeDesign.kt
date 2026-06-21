@@ -16,6 +16,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.text.font.FontWeight
@@ -25,6 +26,7 @@ import com.github.kr328.clash.design.Design
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.util.elapsedIntervalString
 import com.github.kr328.clash.service.model.Profile
+import com.github.kr328.clash.ui.ClashMiuixPageScaffold
 import com.github.kr328.clash.ui.ClashMiuixTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -32,12 +34,9 @@ import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Add
-import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Refresh
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -94,37 +93,29 @@ class ProfilesComposeDesign(context: Context) : Design<ProfilesComposeDesign.Req
 
     @Composable
     private fun PageContent() {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = context.getString(com.github.kr328.clash.design.R.string.profile),
-                    navigationIcon = {
-                        IconButton(onClick = { (context as? Activity)?.onBackPressed() }) {
-                            Icon(
-                                imageVector = MiuixIcons.Back,
-                                contentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
-                            )
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { requests.trySend(Request.Create) }) {
-                            Icon(MiuixIcons.Add, contentDescription = context.getString(com.github.kr328.clash.design.R.string._new))
-                        }
-                        IconButton(
-                            enabled = !allUpdating && profiles.any { it.imported && it.type != Profile.Type.File },
-                            onClick = { requestUpdateAll() },
-                        ) {
-                            Icon(MiuixIcons.Refresh, contentDescription = context.getString(com.github.kr328.clash.design.R.string.update))
-                        }
-                    },
-                )
+        ClashMiuixPageScaffold(
+            title = context.getString(com.github.kr328.clash.design.R.string.profile),
+            backContentDescription = context.getString(com.github.kr328.clash.design.R.string.close),
+            onBack = { (context as? Activity)?.onBackPressed() },
+            actions = {
+                IconButton(onClick = { requests.trySend(Request.Create) }) {
+                    Icon(MiuixIcons.Add, contentDescription = context.getString(com.github.kr328.clash.design.R.string._new))
+                }
+                IconButton(
+                    enabled = !allUpdating && profiles.any { it.imported && it.type != Profile.Type.File },
+                    onClick = { requestUpdateAll() },
+                ) {
+                    Icon(MiuixIcons.Refresh, contentDescription = context.getString(com.github.kr328.clash.design.R.string.update))
+                }
             },
-        ) { innerPadding ->
+        ) { innerPadding, nestedScrollConnection ->
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(nestedScrollConnection),
                 contentPadding = PaddingValues(
                     start = 20.dp,
-                    top = innerPadding.calculateTopPadding() + 20.dp,
+                    top = innerPadding.calculateTopPadding() + 12.dp,
                     end = 20.dp,
                     bottom = innerPadding.calculateBottomPadding() + 20.dp,
                 ),
