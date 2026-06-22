@@ -172,8 +172,6 @@ class MainActivity : BaseActivity<MainComposeDesign>() {
                             patchMode(it.mode)
                             design.patchOverrideMode(it.mode)
                         }
-                        is MainComposeDesign.Request.UpdateProfile ->
-                            withProfile { update(it.profile.uuid) }
                         is MainComposeDesign.Request.ActiveProfile -> {
                             withProfile {
                                 if (it.profile.imported) {
@@ -185,13 +183,6 @@ class MainActivity : BaseActivity<MainComposeDesign>() {
                         }
                         is MainComposeDesign.Request.EditProfile ->
                             startActivity(PropertiesActivity::class.intent.setUUID(it.profile.uuid))
-                        is MainComposeDesign.Request.DuplicateProfile -> {
-                            val uuid = withProfile { clone(it.profile.uuid) }
-
-                            startActivity(PropertiesActivity::class.intent.setUUID(uuid))
-                        }
-                        is MainComposeDesign.Request.DeleteProfile ->
-                            withProfile { delete(it.profile.uuid) }
                     }
                 }
                 if (clashRunning) {

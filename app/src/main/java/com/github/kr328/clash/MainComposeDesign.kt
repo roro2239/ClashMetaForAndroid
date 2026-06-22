@@ -68,6 +68,7 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
@@ -75,7 +76,6 @@ import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Add
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Contacts
-import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.icon.extended.Edit
 import top.yukonga.miuix.kmp.icon.extended.File
 import top.yukonga.miuix.kmp.icon.extended.Link
@@ -110,11 +110,8 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
         data class SelectProxy(val groupIndex: Int, val name: String) : Request()
         data class UrlTest(val groupIndex: Int) : Request()
         data class PatchMode(val mode: TunnelState.Mode?) : Request()
-        data class UpdateProfile(val profile: Profile) : Request()
         data class ActiveProfile(val profile: Profile) : Request()
         data class EditProfile(val profile: Profile) : Request()
-        data class DuplicateProfile(val profile: Profile) : Request()
-        data class DeleteProfile(val profile: Profile) : Request()
     }
 
     data class HomeState(
@@ -993,46 +990,24 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
                         )
                         ProfileMetaText(profile)
                     }
-                    Button(onClick = { send(Request.ActiveProfile(profile)) }) {
-                        Text(
-                            text = if (profile.active) {
-                                context.getString(com.github.kr328.clash.design.R.string.active)
-                            } else {
-                                context.getString(com.github.kr328.clash.design.R.string.activate)
+                    Switch(
+                        checked = profile.active,
+                        onCheckedChange = {
+                            if (!profile.active) {
+                                send(Request.ActiveProfile(profile))
                             }
-                        )
-                    }
+                        },
+                    )
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (profile.imported && profile.type != Profile.Type.File) {
-                        Button(
-                            modifier = Modifier.weight(1f),
-                            onClick = { send(Request.UpdateProfile(profile)) },
-                        ) {
-                            Text(text = context.getString(com.github.kr328.clash.design.R.string.update))
-                        }
-                    }
                     IconButton(onClick = { send(Request.EditProfile(profile)) }) {
                         Icon(
                             imageVector = MiuixIcons.Edit,
                             contentDescription = context.getString(com.github.kr328.clash.design.R.string.edit),
-                        )
-                    }
-                    IconButton(onClick = { send(Request.DuplicateProfile(profile)) }) {
-                        Icon(
-                            imageVector = MiuixIcons.Add,
-                            contentDescription = context.getString(com.github.kr328.clash.design.R.string.duplicate),
-                        )
-                    }
-                    IconButton(onClick = { send(Request.DeleteProfile(profile)) }) {
-                        Icon(
-                            imageVector = MiuixIcons.Delete,
-                            contentDescription = context.getString(com.github.kr328.clash.design.R.string.delete),
-                            tint = MiuixTheme.colorScheme.error,
                         )
                     }
                 }

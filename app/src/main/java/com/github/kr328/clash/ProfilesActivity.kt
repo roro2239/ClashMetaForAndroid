@@ -87,10 +87,6 @@ class ProfilesActivity : BaseActivity<ProfilesComposeDesign>() {
                                     }
                                 }
                             }
-                        is ProfilesComposeDesign.Request.Update ->
-                            withProfile { update(it.profile.uuid) }
-                        is ProfilesComposeDesign.Request.Delete ->
-                            withProfile { delete(it.profile.uuid) }
                         is ProfilesComposeDesign.Request.Edit ->
                             startActivity(PropertiesActivity::class.intent.setUUID(it.profile.uuid))
                         is ProfilesComposeDesign.Request.Save -> {
@@ -125,11 +121,6 @@ class ProfilesActivity : BaseActivity<ProfilesComposeDesign>() {
                                 else
                                     design.requestSave(it.profile)
                             }
-                        }
-                        is ProfilesComposeDesign.Request.Duplicate -> {
-                            val uuid = withProfile { clone(it.profile.uuid) }
-
-                            startActivity(PropertiesActivity::class.intent.setUUID(uuid))
                         }
                     }
                 }
