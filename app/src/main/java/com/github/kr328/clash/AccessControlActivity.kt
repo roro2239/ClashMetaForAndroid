@@ -20,19 +20,15 @@ class AccessControlActivity : BaseActivity<AccessControlComposeDesign>() {
     override suspend fun main() {
         val service = ServiceStore(this)
 
-        val allowPackages = withContext(Dispatchers.IO) {
-            service.accessControlAllowPackages.toMutableSet()
-        }
-        val denyPackages = withContext(Dispatchers.IO) {
-            service.accessControlDenyPackages.toMutableSet()
+        val appRules = withContext(Dispatchers.IO) {
+            service.accessControlPackageModes.decodeAppRules().toMutableMap()
         }
 
         defer {
             withContext(Dispatchers.IO) {
-                val changed = allowPackages != service.accessControlAllowPackages ||
-                        denyPackages != service.accessControlDenyPackages
-                service.accessControlAllowPackages = allowPackages
-                service.accessControlDenyPackages = denyPackages
+                val rules = appRules.encodeAppRules()
+                val changed = service.accessControlPackageModes != rules
+                service.accessControlPackageModes = rules
                 if (clashRunning && changed) {
                     stopClashService()
                     while (clashRunning) {
@@ -43,9 +39,9 @@ class AccessControlActivity : BaseActivity<AccessControlComposeDesign>() {
             }
         }
 
-        migrateLegacyAccessControl(service, allowPackages, denyPackages)
+        migrateLegacyAccessControl(service, appRules)
 
-        val design = AccessControlComposeDesign(this, uiStore, allowPackages, denyPackages)
+        val design = AccessControlComposeDesign(this, uiStore, appRules)
 
         setContentDesign(design)
 
@@ -72,15 +68,18 @@ class AccessControlActivity : BaseActivity<AccessControlComposeDesign>() {
 
     private fun migrateLegacyAccessControl(
         service: ServiceStore,
-        allowPackages: MutableSet<String>,
-        denyPackages: MutableSet<String>,
+        appRules: MutableMap<String, AccessControlComposeDesign.AppRule>,
     ) {
-        if (allowPackages.isNotEmpty() || denyPackages.isNotEmpty()) return
+        if (appRules.isNotEmpty()) return
 
         when (service.accessControlMode) {
             AccessControlMode.AcceptAll -> Unit
-            AccessControlMode.AcceptSelected -> allowPackages.addAll(service.accessControlPackages)
-            AccessControlMode.DenySelected -> denyPackages.addAll(service.accessControlPackages)
+            AccessControlMode.AcceptSelected -> service.accessControlPackages.forEach {
+                appRules[it] = AccessControlComposeDesign.AppRule.Global
+            }
+            AccessControlMode.DenySelected -> service.accessControlPackages.forEach {
+                appRules[it] = AccessControlComposeDesign.AppRule.Reject
+            }
         }
     }
 

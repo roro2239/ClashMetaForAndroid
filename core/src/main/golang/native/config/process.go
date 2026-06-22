@@ -37,6 +37,10 @@ func patchOverride(cfg *config.RawConfig, _ string) error {
 	if err := json.NewDecoder(strings.NewReader(ReadOverride(OverrideSlotSession))).Decode(cfg); err != nil {
 		log.Warnln("Apply session override: %s", err.Error())
 	}
+	if len(cfg.AppRule) > 0 {
+		cfg.Rule = append(append([]string{}, cfg.AppRule...), cfg.Rule...)
+		cfg.AppRule = nil
+	}
 
 	return nil
 }

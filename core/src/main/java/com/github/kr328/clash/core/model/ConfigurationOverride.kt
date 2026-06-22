@@ -35,6 +35,9 @@ data class ConfigurationOverride(
     @SerialName("mode")
     var mode: TunnelState.Mode? = null,
 
+    @SerialName("clash-for-android-app-rules")
+    var rules: List<String>? = null,
+
     @SerialName("log-level")
     var logLevel: LogMessage.Level? = null,
 

@@ -152,18 +152,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                 }
             }
 
-            // Access Control
-            val allowPackages = store.accessControlAllowPackages
-            val denyPackages = store.accessControlDenyPackages
-            if (allowPackages.isNotEmpty()) {
-                (allowPackages + packageName).forEach {
-                    runCatching { addAllowedApplication(it) }
-                }
-            } else {
-                denyPackages.forEach {
-                    runCatching { addDisallowedApplication(it) }
-                }
-            }
+            runCatching { addDisallowedApplication(packageName) }
 
             // Blocking
             setBlocking(false)

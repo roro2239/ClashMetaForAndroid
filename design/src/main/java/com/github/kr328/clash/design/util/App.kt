@@ -10,6 +10,7 @@ fun PackageInfo.toAppInfo(pm: PackageManager): AppInfo {
         packageName = packageName,
         icon = applicationInfo!!.loadIcon(pm).foreground(),
         label = applicationInfo!!.loadLabel(pm).toString(),
+        uid = applicationInfo!!.uid,
         installTime = firstInstallTime,
         updateDate = lastUpdateTime,
     )

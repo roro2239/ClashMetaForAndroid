@@ -72,9 +72,11 @@ class MainActivity : BaseActivity<MainComposeDesign>() {
         }
 
         design.patchOverrideMode(loadOverrideMode())
+        design.patchProxySort(uiStore.proxySort)
         design.fetchHome()
         design.fetchProfiles()
         design.migrateAccessControl()
+        design.saveAppModeOverride()
         design.fetchAccessControlApps()
         reloadProxyNamesAndGroups()
 
@@ -168,6 +170,7 @@ class MainActivity : BaseActivity<MainComposeDesign>() {
                             design.fetchAccessControlApps()
                         MainComposeDesign.Request.AccessControlRuleChanged -> {
                             design.saveAccessControl()
+                            design.saveAppModeOverride()
                             design.fetchAccessControlApps()
                         }
                         is MainComposeDesign.Request.SelectProxy -> {
@@ -188,9 +191,15 @@ class MainActivity : BaseActivity<MainComposeDesign>() {
                                 design.reloadProxyGroup(it.groupIndex, proxyNames, proxyReloadLock)
                             }
                         }
+                        is MainComposeDesign.Request.PatchProxySort -> {
+                            uiStore.proxySort = it.sort
+                            design.patchProxySort(it.sort)
+                            reloadProxyNamesAndGroups()
+                        }
                         is MainComposeDesign.Request.PatchMode -> {
                             patchMode(it.mode)
                             design.patchOverrideMode(it.mode)
+                            design.saveAppModeOverride()
                         }
                         is MainComposeDesign.Request.ActiveProfile -> {
                             withProfile {
@@ -392,22 +401,27 @@ class MainActivity : BaseActivity<MainComposeDesign>() {
     private fun MainComposeDesign.migrateAccessControl() {
         val store = ServiceStore(this@MainActivity)
         val design = accessControlDesign
-        val allowPackages = store.accessControlAllowPackages
-        val denyPackages = store.accessControlDenyPackages
-        if (allowPackages.isNotEmpty() || denyPackages.isNotEmpty()) {
-            design.replaceRules(allowPackages, denyPackages)
+        val savedRules = store.accessControlPackageModes.decodeAppRules()
+        if (savedRules.isNotEmpty()) {
+            design.replaceRules(savedRules)
             return
         }
 
         when (store.accessControlMode) {
             AccessControlMode.AcceptAll -> Unit
             AccessControlMode.AcceptSelected -> {
-                store.accessControlAllowPackages = store.accessControlPackages
-                design.replaceRules(store.accessControlPackages, emptySet())
+                val rules = store.accessControlPackages.associateWith {
+                    AccessControlComposeDesign.AppRule.Global
+                }
+                store.accessControlPackageModes = rules.encodeAppRules()
+                design.replaceRules(rules)
             }
             AccessControlMode.DenySelected -> {
-                store.accessControlDenyPackages = store.accessControlPackages
-                design.replaceRules(emptySet(), store.accessControlPackages)
+                val rules = store.accessControlPackages.associateWith {
+                    AccessControlComposeDesign.AppRule.Reject
+                }
+                store.accessControlPackageModes = rules.encodeAppRules()
+                design.replaceRules(rules)
             }
         }
     }
@@ -415,14 +429,11 @@ class MainActivity : BaseActivity<MainComposeDesign>() {
     private suspend fun MainComposeDesign.saveAccessControl() {
         val store = ServiceStore(this@MainActivity)
         val design = accessControlDesign
-        val allowPackages = design.allowRules()
-        val denyPackages = design.denyRules()
+        val rules = design.rules().encodeAppRules()
 
         withContext(Dispatchers.IO) {
-            val changed = store.accessControlAllowPackages != allowPackages ||
-                    store.accessControlDenyPackages != denyPackages
-            store.accessControlAllowPackages = allowPackages
-            store.accessControlDenyPackages = denyPackages
+            val changed = store.accessControlPackageModes != rules
+            store.accessControlPackageModes = rules
             if (clashRunning && changed) {
                 stopClashService()
                 while (clashRunning) {
@@ -457,6 +468,52 @@ class MainActivity : BaseActivity<MainComposeDesign>() {
                 .sortedWith(comparator)
                 .toList()
         }
+
+    private suspend fun MainComposeDesign.saveAppModeOverride() {
+        val rules = buildAppModeRules()
+
+        withClash {
+            val persist = queryOverride(Clash.OverrideSlot.Persist)
+            val session = queryOverride(Clash.OverrideSlot.Session)
+
+            persist.rules = rules
+            session.rules = rules
+
+            patchOverride(Clash.OverrideSlot.Persist, persist)
+            patchOverride(Clash.OverrideSlot.Session, session)
+        }
+    }
+
+    private suspend fun MainComposeDesign.buildAppModeRules(): List<String> {
+        val appRules = accessControlDesign.rules()
+        val packageUids = withContext(Dispatchers.IO) {
+            packageManager.getInstalledPackages(0)
+                .mapNotNull { info ->
+                    val uid = info.applicationInfo?.uid ?: return@mapNotNull null
+                    info.packageName to uid
+                }
+                .toMap()
+        }
+
+        return buildList {
+            appRules.forEach { (packageName, rule) ->
+                val uid = packageUids[packageName] ?: return@forEach
+                when (rule) {
+                    AccessControlComposeDesign.AppRule.Reject -> add("UID,$uid,REJECT")
+                    AccessControlComposeDesign.AppRule.Global -> add("UID,$uid,GLOBAL")
+                    AccessControlComposeDesign.AppRule.Direct -> add("UID,$uid,DIRECT")
+                    AccessControlComposeDesign.AppRule.Rule,
+                    AccessControlComposeDesign.AppRule.Default -> Unit
+                }
+            }
+
+            when (overrideMode) {
+                TunnelState.Mode.Global -> add("MATCH,GLOBAL")
+                TunnelState.Mode.Direct -> add("MATCH,DIRECT")
+                else -> Unit
+            }
+        }
+    }
 
     private fun MainComposeDesign.reloadProxyGroup(
         index: Int,
@@ -551,11 +608,16 @@ class MainActivity : BaseActivity<MainComposeDesign>() {
 
     private suspend fun patchMode(mode: TunnelState.Mode?) {
         withClash {
+            val runtimeMode = if (mode == TunnelState.Mode.Global || mode == TunnelState.Mode.Direct) {
+                TunnelState.Mode.Rule
+            } else {
+                mode
+            }
             val persist = queryOverride(Clash.OverrideSlot.Persist)
             val session = queryOverride(Clash.OverrideSlot.Session)
 
-            persist.mode = mode
-            session.mode = mode
+            persist.mode = runtimeMode
+            session.mode = runtimeMode
 
             patchOverride(Clash.OverrideSlot.Persist, persist)
             patchOverride(Clash.OverrideSlot.Session, session)

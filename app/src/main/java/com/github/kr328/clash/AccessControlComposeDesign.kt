@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -53,8 +52,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 class AccessControlComposeDesign(
     context: Context,
     private val uiStore: UiStore,
-    private val allowPackages: MutableSet<String>,
-    private val denyPackages: MutableSet<String>,
+    private val appRules: MutableMap<String, AppRule>,
 ) : Design<AccessControlComposeDesign.Request>(context) {
     enum class Request {
         ReloadApps,
@@ -62,9 +60,11 @@ class AccessControlComposeDesign(
     }
 
     enum class AppRule {
+        Reject,
         Default,
-        Allow,
-        Deny,
+        Rule,
+        Global,
+        Direct,
     }
 
     var apps by mutableStateOf<List<AppInfo>>(emptyList())
@@ -72,7 +72,6 @@ class AccessControlComposeDesign(
 
     private var selectedVersion by mutableIntStateOf(0)
     private var menuExpanded by mutableStateOf(false)
-    private var searchVisible by mutableStateOf(false)
     private var keyword by mutableStateOf("")
     private var choosingApp by mutableStateOf<AppInfo?>(null)
 
@@ -93,8 +92,21 @@ class AccessControlComposeDesign(
         innerPadding: PaddingValues,
         nestedScrollConnection: NestedScrollConnection?,
     ) {
+        val filteredApps = if (keyword.isBlank()) {
+            apps
+        } else {
+            apps.filter {
+                it.label.contains(keyword, ignoreCase = true) ||
+                        it.packageName.contains(keyword, ignoreCase = true)
+            }
+        }
+
         Column(modifier = Modifier.fillMaxSize()) {
-            Row(
+            TextField(
+                value = keyword,
+                onValueChange = { keyword = it },
+                singleLine = true,
+                label = context.getString(com.github.kr328.clash.design.R.string.search),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(
@@ -103,43 +115,10 @@ class AccessControlComposeDesign(
                         end = 20.dp,
                         bottom = 8.dp,
                     ),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = context.getString(com.github.kr328.clash.design.R.string.system_apps),
-                        style = MiuixTheme.textStyles.body1,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Switch(
-                        checked = uiStore.accessControlSystemApp,
-                        onCheckedChange = {
-                            uiStore.accessControlSystemApp = it
-                            requests.trySend(Request.ReloadApps)
-                        },
-                    )
-                }
-                IconButton(onClick = { searchVisible = true }) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = context.getString(com.github.kr328.clash.design.R.string.search),
-                    )
-                }
-                IconButton(onClick = { menuExpanded = true }) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = context.getString(com.github.kr328.clash.design.R.string.properties),
-                    )
-                }
-            }
+            )
 
             AppsList(
-                data = apps,
+                data = filteredApps,
                 modifier = Modifier
                     .fillMaxSize()
                     .then(if (nestedScrollConnection != null) Modifier.nestedScroll(nestedScrollConnection) else Modifier),
@@ -153,8 +132,17 @@ class AccessControlComposeDesign(
         }
 
         AccessControlMenu()
-        SearchDialog()
         RuleDialog()
+    }
+
+    @Composable
+    fun MenuAction() {
+        IconButton(onClick = { menuExpanded = true }) {
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = "菜单",
+            )
+        }
     }
 
     suspend fun patchApps(apps: List<AppInfo>) {
@@ -170,32 +158,21 @@ class AccessControlComposeDesign(
     }
 
     fun appRule(packageName: String): AppRule {
-        return when (packageName) {
-            in allowPackages -> AppRule.Allow
-            in denyPackages -> AppRule.Deny
-            else -> AppRule.Default
-        }
+        return appRules[packageName] ?: AppRule.Default
     }
 
-    fun allowRules(): Set<String> = allowPackages.toSet()
+    fun rules(): Map<String, AppRule> = appRules.toMap()
 
-    fun denyRules(): Set<String> = denyPackages.toSet()
-
-    fun replaceRules(allow: Set<String>, deny: Set<String>) {
-        allowPackages.clear()
-        allowPackages.addAll(allow)
-        denyPackages.clear()
-        denyPackages.addAll(deny)
+    fun replaceRules(rules: Map<String, AppRule>) {
+        appRules.clear()
+        appRules.putAll(rules)
         selectedVersion++
     }
 
     private fun setRule(packageName: String, rule: AppRule) {
-        allowPackages.remove(packageName)
-        denyPackages.remove(packageName)
         when (rule) {
-            AppRule.Default -> Unit
-            AppRule.Allow -> allowPackages.add(packageName)
-            AppRule.Deny -> denyPackages.add(packageName)
+            AppRule.Default -> appRules.remove(packageName)
+            else -> appRules[packageName] = rule
         }
         selectedVersion++
         requests.trySend(Request.RuleChanged)
@@ -285,14 +262,35 @@ class AccessControlComposeDesign(
         if (!menuExpanded) return
 
         ClashMiuixDialog(
-            title = context.getString(com.github.kr328.clash.design.R.string.properties),
+            title = "菜单",
             onDismissRequest = { menuExpanded = false },
         ) {
+            SystemAppItem()
             SortItem(AppInfoSort.Label, com.github.kr328.clash.design.R.string.name)
             SortItem(AppInfoSort.PackageName, com.github.kr328.clash.design.R.string.package_name)
             SortItem(AppInfoSort.InstallTime, com.github.kr328.clash.design.R.string.install_time)
             SortItem(AppInfoSort.UpdateTime, com.github.kr328.clash.design.R.string.update_time)
         }
+    }
+
+    @Composable
+    private fun SystemAppItem() {
+        ClashMiuixMenuItem(
+            title = context.getString(com.github.kr328.clash.design.R.string.system_apps),
+            trailingContent = {
+                Switch(
+                    checked = uiStore.accessControlSystemApp,
+                    onCheckedChange = {
+                        uiStore.accessControlSystemApp = it
+                        sendMenuRequest(Request.ReloadApps)
+                    },
+                )
+            },
+            onClick = {
+                uiStore.accessControlSystemApp = !uiStore.accessControlSystemApp
+                sendMenuRequest(Request.ReloadApps)
+            },
+        )
     }
 
     @Composable
@@ -310,43 +308,6 @@ class AccessControlComposeDesign(
                 sendMenuRequest(Request.ReloadApps)
             },
         )
-    }
-
-    @Composable
-    private fun SearchDialog() {
-        if (!searchVisible) return
-
-        val filtered = if (keyword.isBlank()) {
-            emptyList()
-        } else {
-            apps.filter {
-                it.label.contains(keyword, ignoreCase = true) ||
-                        it.packageName.contains(keyword, ignoreCase = true)
-            }
-        }
-
-        ClashMiuixDialog(
-            title = context.getString(com.github.kr328.clash.design.R.string.search),
-            confirmText = context.getString(com.github.kr328.clash.design.R.string.close),
-            onConfirm = { closeSearch() },
-            onDismissRequest = { closeSearch() },
-        ) {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                item {
-                    TextField(
-                        value = keyword,
-                        onValueChange = { keyword = it },
-                        singleLine = true,
-                        label = context.getString(com.github.kr328.clash.design.R.string.search),
-                    )
-                }
-                items(filtered, key = AppInfo::packageName) { app ->
-                    AppItem(app, selectedVersion)
-                }
-            }
-        }
     }
 
     @Composable
@@ -382,17 +343,13 @@ class AccessControlComposeDesign(
         requests.trySend(request)
     }
 
-    private fun closeSearch() {
-        searchVisible = false
-        keyword = ""
-        selectedVersion++
-    }
-
     private fun ruleText(rule: AppRule): String {
         return when (rule) {
+            AppRule.Reject -> "拒绝"
             AppRule.Default -> "默认"
-            AppRule.Allow -> "允许"
-            AppRule.Deny -> "拒绝"
+            AppRule.Rule -> "规则"
+            AppRule.Global -> "全局"
+            AppRule.Direct -> "直连"
         }
     }
 }

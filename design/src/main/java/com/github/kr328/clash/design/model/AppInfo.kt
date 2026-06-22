@@ -6,6 +6,7 @@ data class AppInfo(
     val packageName: String,
     val label: String,
     val icon: Drawable,
+    val uid: Int,
     val installTime: Long,
     val updateDate: Long,
 )
