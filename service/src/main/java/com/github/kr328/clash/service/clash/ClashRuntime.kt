@@ -2,6 +2,7 @@ package com.github.kr328.clash.service.clash
 
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.Clash
+import com.github.kr328.clash.service.ActiveProfileLoader
 import com.github.kr328.clash.service.clash.module.Module
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
@@ -29,6 +30,7 @@ fun CoroutineScope.clashRuntime(block: suspend ClashRuntimeScope.() -> Unit): Cl
                         val modules = mutableListOf<Module<*>>()
 
                         Clash.reset()
+                        ActiveProfileLoader.invalidate()
                         Clash.clearOverride(Clash.OverrideSlot.Session)
 
                         val scope = object : ClashRuntimeScope {
@@ -49,6 +51,7 @@ fun CoroutineScope.clashRuntime(block: suspend ClashRuntimeScope.() -> Unit): Cl
                     } finally {
                         withContext(NonCancellable) {
                             Clash.reset()
+                            ActiveProfileLoader.invalidate()
                             Clash.clearOverride(Clash.OverrideSlot.Session)
 
                             Log.d("ClashRuntime: destroyed")

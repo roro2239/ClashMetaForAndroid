@@ -12,6 +12,7 @@ import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.sendOverrideChanged
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.runBlocking
 
 class ClashManager(private val context: Context) : IClashManager,
     CoroutineScope by CoroutineScope(Dispatchers.IO) {
@@ -27,18 +28,26 @@ class ClashManager(private val context: Context) : IClashManager,
     }
 
     override fun queryProxyGroupNames(excludeNotSelectable: Boolean): List<String> {
+        ensureActiveProfileLoaded()
+
         return Clash.queryGroupNames(excludeNotSelectable)
     }
 
     override fun queryProxyGroup(name: String, proxySort: ProxySort): ProxyGroup {
+        ensureActiveProfileLoaded()
+
         return Clash.queryGroup(name, proxySort)
     }
 
     override fun queryConfiguration(): UiConfiguration {
+        ensureActiveProfileLoaded()
+
         return Clash.queryConfiguration()
     }
 
     override fun queryProviders(): ProviderList {
+        ensureActiveProfileLoaded()
+
         return ProviderList(Clash.queryProviders())
     }
 
@@ -106,6 +115,12 @@ class ClashManager(private val context: Context) : IClashManager,
                     }
                 }
             }
+        }
+    }
+
+    private fun ensureActiveProfileLoaded() {
+        runBlocking {
+            ActiveProfileLoader.ensure(context)
         }
     }
 }

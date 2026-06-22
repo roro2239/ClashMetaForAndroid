@@ -339,16 +339,26 @@ class MainActivity : BaseActivity<MainComposeDesign>() {
     }
 
     private suspend fun MainComposeDesign.fetchHome() {
+        val active = withProfile { queryActive() }
+        if (active == null || !active.imported) {
+            patchHome(
+                MainComposeDesign.HomeState(
+                    clashRunning = clashRunning,
+                    forwarded = homeState.forwarded,
+                )
+            )
+            return
+        }
+
         val state = withClash { queryTunnelState() }
         val providers = withClash { queryProviders() }
-        val active = withProfile { queryActive() }
 
         patchHome(
             MainComposeDesign.HomeState(
                 clashRunning = clashRunning,
                 forwarded = homeState.forwarded,
                 mode = state.mode.toText(),
-                profileName = active?.name,
+                profileName = active.name,
                 hasProviders = providers.isNotEmpty(),
             )
         )
@@ -441,8 +451,6 @@ class MainActivity : BaseActivity<MainComposeDesign>() {
     }
 
     private suspend fun loadProxyNames(): List<String> {
-        if (!clashRunning) return emptyList()
-
         return withClash {
             queryProxyGroupNames(uiStore.proxyExcludeNotSelectable)
         }

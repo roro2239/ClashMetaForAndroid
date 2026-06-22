@@ -3,12 +3,8 @@ package com.github.kr328.clash.service.clash.module
 import android.app.Service
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
-import com.github.kr328.clash.core.Clash
-import com.github.kr328.clash.service.StatusProvider
-import com.github.kr328.clash.service.data.ImportedDao
-import com.github.kr328.clash.service.data.SelectionDao
+import com.github.kr328.clash.service.ActiveProfileLoader
 import com.github.kr328.clash.service.store.ServiceStore
-import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.sendProfileLoaded
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.selects.select
@@ -50,24 +46,11 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
                 if (current == loaded && changed != null && changed != loaded)
                     continue
 
-                loaded = current
-
-                val active = ImportedDao().queryByUUID(current)
-                    ?: throw NullPointerException("No profile selected")
-
-                Clash.setAgeSecretKey(active.ageSecretKey?.takeIf { it.isNotBlank() })
-
-                Clash.load(service.importedDir.resolve(active.uuid.toString())).await()
-
-                val remove = SelectionDao().querySelections(active.uuid)
-                    .filterNot { Clash.patchSelector(it.proxy, it.selected) }
-                    .map { it.proxy }
-
-                SelectionDao().removeSelections(active.uuid, remove)
-
-                StatusProvider.currentProfile = active.name
+                val active = ActiveProfileLoader.ensure(service, force = true)
 
                 service.sendProfileLoaded(current)
+
+                loaded = current
 
                 Log.d("Profile ${active.name} loaded")
             } catch (e: Exception) {
