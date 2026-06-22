@@ -11,7 +11,6 @@ import com.github.kr328.clash.common.constants.Components
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.clash.clashRuntime
 import com.github.kr328.clash.service.clash.module.*
-import com.github.kr328.clash.service.model.AccessControlMode
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.cancelAndJoinBlocking
 import com.github.kr328.clash.service.util.parseCIDR
@@ -154,17 +153,15 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
             }
 
             // Access Control
-            when (store.accessControlMode) {
-                AccessControlMode.AcceptAll -> Unit
-                AccessControlMode.AcceptSelected -> {
-                    (store.accessControlPackages + packageName).forEach {
-                        runCatching { addAllowedApplication(it) }
-                    }
+            val allowPackages = store.accessControlAllowPackages
+            val denyPackages = store.accessControlDenyPackages
+            if (allowPackages.isNotEmpty()) {
+                (allowPackages + packageName).forEach {
+                    runCatching { addAllowedApplication(it) }
                 }
-                AccessControlMode.DenySelected -> {
-                    (store.accessControlPackages - packageName).forEach {
-                        runCatching { addDisallowedApplication(it) }
-                    }
+            } else {
+                denyPackages.forEach {
+                    runCatching { addDisallowedApplication(it) }
                 }
             }
 

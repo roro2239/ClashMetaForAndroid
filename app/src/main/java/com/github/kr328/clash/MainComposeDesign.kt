@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.DpSize
 import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.design.Design
+import com.github.kr328.clash.design.model.AppInfo
 import com.github.kr328.clash.design.util.elapsedIntervalString
 import com.github.kr328.clash.design.util.toString
 import com.github.kr328.clash.service.model.Profile
@@ -107,6 +108,8 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
         object StartNetworkSettings : Request()
         object StartOverrideSettings : Request()
         object StartMetaFeatureSettings : Request()
+        object ReloadAccessControlApps : Request()
+        object AccessControlRuleChanged : Request()
         data class SelectProxy(val groupIndex: Int, val name: String) : Request()
         data class UrlTest(val groupIndex: Int) : Request()
         data class PatchMode(val mode: TunnelState.Mode?) : Request()
@@ -134,6 +137,7 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
         Home(MiuixIcons.VerticalSplit),
         Proxy(MiuixIcons.More),
         Profiles(MiuixIcons.Contacts),
+        Apps(MiuixIcons.Settings),
         Settings(MiuixIcons.Settings);
     }
 
@@ -157,6 +161,12 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
     private var createProfileInterval by mutableStateOf("")
     private var createProfileFileUri by mutableStateOf<Uri?>(null)
     private var createProfileFileName by mutableStateOf("")
+    val accessControlDesign = AccessControlComposeDesign(
+        context = context,
+        uiStore = com.github.kr328.clash.design.store.UiStore(context),
+        allowPackages = mutableSetOf(),
+        denyPackages = mutableSetOf(),
+    )
 
     override val root: View = ComposeView(context).apply {
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
@@ -226,6 +236,14 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
         profiles = value
     }
 
+    suspend fun patchAccessControlApps(value: List<AppInfo>) {
+        accessControlDesign.patchApps(value)
+    }
+
+    suspend fun rebindAccessControlApps() {
+        accessControlDesign.rebindAll()
+    }
+
     fun patchAllProfilesUpdating(value: Boolean) {
         allProfilesUpdating = value
     }
@@ -281,6 +299,12 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
             }
         }
 
+        val navigationBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        val pagePadding = PaddingValues(
+            top = 0.dp,
+            bottom = navigationBarPadding + 96.dp,
+        )
+
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -288,25 +312,42 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
                     scrollBehavior = scrollBehavior,
                 )
             },
-            bottomBar = {
+        ) { innerPadding ->
+            Box(modifier = Modifier.fillMaxSize()) {
+                val mergedPadding = PaddingValues(
+                    top = innerPadding.calculateTopPadding(),
+                    bottom = pagePadding.calculateBottomPadding(),
+                )
+
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    userScrollEnabled = false,
+                ) { page ->
+                    when (Destination.entries[page]) {
+                        Destination.Home -> HomePage(mergedPadding, scrollBehavior.nestedScrollConnection)
+                        Destination.Proxy -> ProxyPage(mergedPadding, scrollBehavior.nestedScrollConnection)
+                        Destination.Profiles -> ProfilesPage(mergedPadding, scrollBehavior.nestedScrollConnection)
+                        Destination.Apps -> accessControlDesign.PageContent(mergedPadding, scrollBehavior.nestedScrollConnection)
+                        Destination.Settings -> SettingsPage(mergedPadding, scrollBehavior.nestedScrollConnection)
+                    }
+                }
+
                 FloatingNavigationBar(
                     selectedPage = targetPage,
-                    bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+                    bottomPadding = navigationBarPadding,
                     onSelected = ::navigateTo,
+                    modifier = Modifier.align(Alignment.BottomCenter),
                 )
-            },
-        ) { innerPadding ->
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
-                userScrollEnabled = false,
-            ) { page ->
-                when (Destination.entries[page]) {
-                    Destination.Home -> HomePage(innerPadding, scrollBehavior.nestedScrollConnection)
-                    Destination.Proxy -> ProxyPage(innerPadding, scrollBehavior.nestedScrollConnection)
-                    Destination.Profiles -> ProfilesPage(innerPadding, scrollBehavior.nestedScrollConnection)
-                    Destination.Settings -> SettingsPage(innerPadding, scrollBehavior.nestedScrollConnection)
+            }
+        }
+
+        LaunchedEffect(accessControlDesign) {
+            send(Request.ReloadAccessControlApps)
+            for (request in accessControlDesign.requests) {
+                when (request) {
+                    AccessControlComposeDesign.Request.ReloadApps -> send(Request.ReloadAccessControlApps)
+                    AccessControlComposeDesign.Request.RuleChanged -> send(Request.AccessControlRuleChanged)
                 }
             }
         }
@@ -330,15 +371,16 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
         selectedPage: Int,
         bottomPadding: Dp,
         onSelected: (Int) -> Unit,
+        modifier: Modifier = Modifier,
     ) {
-        val tabWidth = 76.dp
+        val tabWidth = 64.dp
         val indicatorOffset by animateDpAsState(
             targetValue = tabWidth * selectedPage.toFloat(),
             label = "floatingNavigationIndicatorOffset",
         )
 
         Box(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
                 .padding(bottom = bottomPadding + 12.dp),
             contentAlignment = Alignment.Center,
@@ -1344,6 +1386,7 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
             Destination.Home -> context.getString(com.github.kr328.clash.design.R.string.home)
             Destination.Proxy -> context.getString(com.github.kr328.clash.design.R.string.proxy)
             Destination.Profiles -> context.getString(com.github.kr328.clash.design.R.string.profile)
+            Destination.Apps -> context.getString(com.github.kr328.clash.design.R.string.app)
             Destination.Settings -> context.getString(com.github.kr328.clash.design.R.string.settings)
         }
     }

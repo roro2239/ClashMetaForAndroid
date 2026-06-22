@@ -1,14 +1,12 @@
 package com.github.kr328.clash
 
 import android.Manifest.permission.INTERNET
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
-import androidx.core.content.getSystemService
 import com.github.kr328.clash.design.model.AppInfo
 import com.github.kr328.clash.design.util.toAppInfo
+import com.github.kr328.clash.service.model.AccessControlMode
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
@@ -22,14 +20,19 @@ class AccessControlActivity : BaseActivity<AccessControlComposeDesign>() {
     override suspend fun main() {
         val service = ServiceStore(this)
 
-        val selected = withContext(Dispatchers.IO) {
-            service.accessControlPackages.toMutableSet()
+        val allowPackages = withContext(Dispatchers.IO) {
+            service.accessControlAllowPackages.toMutableSet()
+        }
+        val denyPackages = withContext(Dispatchers.IO) {
+            service.accessControlDenyPackages.toMutableSet()
         }
 
         defer {
             withContext(Dispatchers.IO) {
-                val changed = selected != service.accessControlPackages
-                service.accessControlPackages = selected
+                val changed = allowPackages != service.accessControlAllowPackages ||
+                        denyPackages != service.accessControlDenyPackages
+                service.accessControlAllowPackages = allowPackages
+                service.accessControlDenyPackages = denyPackages
                 if (clashRunning && changed) {
                     stopClashService()
                     while (clashRunning) {
@@ -40,7 +43,9 @@ class AccessControlActivity : BaseActivity<AccessControlComposeDesign>() {
             }
         }
 
-        val design = AccessControlComposeDesign(this, uiStore, selected)
+        migrateLegacyAccessControl(service, allowPackages, denyPackages)
+
+        val design = AccessControlComposeDesign(this, uiStore, allowPackages, denyPackages)
 
         setContentDesign(design)
 
@@ -54,76 +59,40 @@ class AccessControlActivity : BaseActivity<AccessControlComposeDesign>() {
                 design.requests.onReceive {
                     when (it) {
                         AccessControlComposeDesign.Request.ReloadApps -> {
-                            design.patchApps(loadApps(selected))
+                            design.patchApps(loadApps(design))
                         }
 
-                        AccessControlComposeDesign.Request.SelectAll -> {
-                            val all = withContext(Dispatchers.Default) {
-                                design.apps.map(AppInfo::packageName)
-                            }
-
-                            selected.clear()
-                            selected.addAll(all)
-
-                            design.rebindAll()
-                        }
-
-                        AccessControlComposeDesign.Request.SelectNone -> {
-                            selected.clear()
-
-                            design.rebindAll()
-                        }
-
-                        AccessControlComposeDesign.Request.SelectInvert -> {
-                            val all = withContext(Dispatchers.Default) {
-                                design.apps.map(AppInfo::packageName).toSet() - selected
-                            }
-
-                            selected.clear()
-                            selected.addAll(all)
-
-                            design.rebindAll()
-                        }
-
-                        AccessControlComposeDesign.Request.Import -> {
-                            val clipboard = getSystemService<ClipboardManager>()
-                            val data = clipboard?.primaryClip
-
-                            if (data != null && data.itemCount > 0) {
-                                val packages = data.getItemAt(0).text.split("\n").toSet()
-                                val all = design.apps.map(AppInfo::packageName).intersect(packages)
-
-                                selected.clear()
-                                selected.addAll(all)
-                            }
-
-                            design.rebindAll()
-                        }
-
-                        AccessControlComposeDesign.Request.Export -> {
-                            val clipboard = getSystemService<ClipboardManager>()
-
-                            val data = ClipData.newPlainText(
-                                "packages",
-                                selected.joinToString("\n")
-                            )
-
-                            clipboard?.setPrimaryClip(data)
-                        }
+                        AccessControlComposeDesign.Request.RuleChanged ->
+                            design.patchApps(loadApps(design))
                     }
                 }
             }
         }
     }
 
-    private suspend fun loadApps(selected: Set<String>): List<AppInfo> =
+    private fun migrateLegacyAccessControl(
+        service: ServiceStore,
+        allowPackages: MutableSet<String>,
+        denyPackages: MutableSet<String>,
+    ) {
+        if (allowPackages.isNotEmpty() || denyPackages.isNotEmpty()) return
+
+        when (service.accessControlMode) {
+            AccessControlMode.AcceptAll -> Unit
+            AccessControlMode.AcceptSelected -> allowPackages.addAll(service.accessControlPackages)
+            AccessControlMode.DenySelected -> denyPackages.addAll(service.accessControlPackages)
+        }
+    }
+
+    private suspend fun loadApps(design: AccessControlComposeDesign): List<AppInfo> =
         withContext(Dispatchers.IO) {
-            val reverse = uiStore.accessControlReverse
             val sort = uiStore.accessControlSort
             val systemApp = uiStore.accessControlSystemApp
 
-            val base = compareByDescending<AppInfo> { it.packageName in selected }
-            val comparator = if (reverse) base.thenDescending(sort) else base.then(sort)
+            val base = compareByDescending<AppInfo> {
+                design.appRule(it.packageName) != AccessControlComposeDesign.AppRule.Default
+            }
+            val comparator = base.then(sort)
 
             val pm = packageManager
             val packages = pm.getInstalledPackages(PackageManager.GET_PERMISSIONS)

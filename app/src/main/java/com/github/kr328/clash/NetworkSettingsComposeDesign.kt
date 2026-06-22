@@ -21,7 +21,6 @@ import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.Design
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.design.ui.ToastDuration
-import com.github.kr328.clash.service.model.AccessControlMode
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.ui.ClashMiuixDialog
 import com.github.kr328.clash.ui.ClashMiuixPageScaffold
@@ -31,7 +30,6 @@ import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.AppRecording
 import top.yukonga.miuix.kmp.icon.extended.Link
 import top.yukonga.miuix.kmp.icon.extended.Lock
 import top.yukonga.miuix.kmp.icon.extended.Settings
@@ -48,7 +46,7 @@ class NetworkSettingsComposeDesign(
     private val running: Boolean,
 ) : Design<NetworkSettingsComposeDesign.Request>(context) {
     enum class Request {
-        StartAccessControlList
+        None,
     }
 
     private var enableVpn by mutableStateOf(uiStore.enableVpn)
@@ -58,9 +56,7 @@ class NetworkSettingsComposeDesign(
     private var allowIpv6 by mutableStateOf(srvStore.allowIpv6)
     private var systemProxy by mutableStateOf(srvStore.systemProxy)
     private var tunStackMode by mutableStateOf(srvStore.tunStackMode)
-    private var accessControlMode by mutableStateOf(srvStore.accessControlMode)
     private var showTunStackDialog by mutableStateOf(false)
-    private var showAccessModeDialog by mutableStateOf(false)
 
     override val root = ComposeView(context).apply {
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
@@ -151,21 +147,6 @@ class NetworkSettingsComposeDesign(
                         ) {
                             showTunStackDialog = true
                         }
-                        ClickItem(
-                            icon = MiuixIcons.AppRecording,
-                            title = context.getString(com.github.kr328.clash.design.R.string.access_control_mode),
-                            summary = accessModeText(accessControlMode),
-                            enabled = vpnOptionsEnabled,
-                        ) {
-                            showAccessModeDialog = true
-                        }
-                        ClickItem(
-                            icon = MiuixIcons.AppRecording,
-                            title = context.getString(com.github.kr328.clash.design.R.string.access_control_packages),
-                            summary = context.getString(com.github.kr328.clash.design.R.string.access_control_packages_summary),
-                        ) {
-                            requests.trySend(Request.StartAccessControlList)
-                        }
                     }
                 }
             }
@@ -188,37 +169,6 @@ class NetworkSettingsComposeDesign(
                 },
                 onDismiss = { showTunStackDialog = false },
             )
-        }
-        if (showAccessModeDialog) {
-            AccessModeDialog()
-        }
-    }
-
-    @Composable
-    private fun AccessModeDialog() {
-        val values = AccessControlMode.values()
-
-        ClashMiuixDialog(
-            title = context.getString(com.github.kr328.clash.design.R.string.access_control_mode),
-            dismissText = context.getString(com.github.kr328.clash.design.R.string.cancel),
-            onDismissButton = { showAccessModeDialog = false },
-            onDismissRequest = { showAccessModeDialog = false },
-        ) {
-            LazyColumn {
-                items(values.size) { index ->
-                    val value = values[index]
-
-                    RadioButtonPreference(
-                        title = accessModeText(value),
-                        selected = accessControlMode == value,
-                        onClick = {
-                            accessControlMode = value
-                            srvStore.accessControlMode = value
-                            showAccessModeDialog = false
-                        },
-                    )
-                }
-            }
         }
     }
 
@@ -304,13 +254,4 @@ class NetworkSettingsComposeDesign(
         )
     }
 
-    private fun accessModeText(value: AccessControlMode): String {
-        return context.getString(
-            when (value) {
-                AccessControlMode.AcceptAll -> com.github.kr328.clash.design.R.string.allow_all_apps
-                AccessControlMode.AcceptSelected -> com.github.kr328.clash.design.R.string.allow_selected_apps
-                AccessControlMode.DenySelected -> com.github.kr328.clash.design.R.string.deny_selected_apps
-            },
-        )
-    }
 }

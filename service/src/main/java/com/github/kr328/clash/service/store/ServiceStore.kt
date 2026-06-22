@@ -36,6 +36,16 @@ class ServiceStore(context: Context) {
         defaultValue = emptySet()
     )
 
+    var accessControlAllowPackages by store.stringSet(
+        key = "access_control_allow_packages",
+        defaultValue = emptySet()
+    )
+
+    var accessControlDenyPackages by store.stringSet(
+        key = "access_control_deny_packages",
+        defaultValue = emptySet()
+    )
+
     var dnsHijacking by store.boolean(
         key = "dns_hijacking",
         defaultValue = true

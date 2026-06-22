@@ -1,6 +1,9 @@
 package com.github.kr328.clash
 
+import android.Manifest.permission.INTERNET
 import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -20,8 +23,12 @@ import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.bridge.Bridge
 import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.core.util.trafficTotal
+import com.github.kr328.clash.design.model.AppInfo
 import com.github.kr328.clash.design.ui.ToastDuration
+import com.github.kr328.clash.design.util.toAppInfo
+import com.github.kr328.clash.service.model.AccessControlMode
 import com.github.kr328.clash.service.model.Profile
+import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.pendingDir
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
@@ -67,6 +74,8 @@ class MainActivity : BaseActivity<MainComposeDesign>() {
         design.patchOverrideMode(loadOverrideMode())
         design.fetchHome()
         design.fetchProfiles()
+        design.migrateAccessControl()
+        design.fetchAccessControlApps()
         reloadProxyNamesAndGroups()
 
         val trafficTicker = ticker(TimeUnit.SECONDS.toMillis(1))
@@ -86,6 +95,11 @@ class MainActivity : BaseActivity<MainComposeDesign>() {
 
                     when (it) {
                         Event.ActivityStart, Event.ProfileChanged -> design.fetchProfiles()
+                        else -> Unit
+                    }
+
+                    when (it) {
+                        Event.ActivityStart -> design.fetchAccessControlApps()
                         else -> Unit
                     }
 
@@ -150,6 +164,12 @@ class MainActivity : BaseActivity<MainComposeDesign>() {
                             startActivity(OverrideSettingsActivity::class.intent)
                         MainComposeDesign.Request.StartMetaFeatureSettings ->
                             startActivity(MetaFeatureSettingsActivity::class.intent)
+                        MainComposeDesign.Request.ReloadAccessControlApps ->
+                            design.fetchAccessControlApps()
+                        MainComposeDesign.Request.AccessControlRuleChanged -> {
+                            design.saveAccessControl()
+                            design.fetchAccessControlApps()
+                        }
                         is MainComposeDesign.Request.SelectProxy -> {
                             withClash {
                                 patchSelector(proxyNames[it.groupIndex], it.name)
@@ -365,6 +385,79 @@ class MainActivity : BaseActivity<MainComposeDesign>() {
         patchProfiles(withProfile { queryAll() })
     }
 
+    private suspend fun MainComposeDesign.fetchAccessControlApps() {
+        patchAccessControlApps(loadAccessControlApps(this))
+    }
+
+    private fun MainComposeDesign.migrateAccessControl() {
+        val store = ServiceStore(this@MainActivity)
+        val design = accessControlDesign
+        val allowPackages = store.accessControlAllowPackages
+        val denyPackages = store.accessControlDenyPackages
+        if (allowPackages.isNotEmpty() || denyPackages.isNotEmpty()) {
+            design.replaceRules(allowPackages, denyPackages)
+            return
+        }
+
+        when (store.accessControlMode) {
+            AccessControlMode.AcceptAll -> Unit
+            AccessControlMode.AcceptSelected -> {
+                store.accessControlAllowPackages = store.accessControlPackages
+                design.replaceRules(store.accessControlPackages, emptySet())
+            }
+            AccessControlMode.DenySelected -> {
+                store.accessControlDenyPackages = store.accessControlPackages
+                design.replaceRules(emptySet(), store.accessControlPackages)
+            }
+        }
+    }
+
+    private suspend fun MainComposeDesign.saveAccessControl() {
+        val store = ServiceStore(this@MainActivity)
+        val design = accessControlDesign
+        val allowPackages = design.allowRules()
+        val denyPackages = design.denyRules()
+
+        withContext(Dispatchers.IO) {
+            val changed = store.accessControlAllowPackages != allowPackages ||
+                    store.accessControlDenyPackages != denyPackages
+            store.accessControlAllowPackages = allowPackages
+            store.accessControlDenyPackages = denyPackages
+            if (clashRunning && changed) {
+                stopClashService()
+                while (clashRunning) {
+                    kotlinx.coroutines.delay(200)
+                }
+                startClashService()
+            }
+        }
+    }
+
+    private suspend fun loadAccessControlApps(design: MainComposeDesign): List<AppInfo> =
+        withContext(Dispatchers.IO) {
+            val sort = uiStore.accessControlSort
+            val systemApp = uiStore.accessControlSystemApp
+            val accessDesign = design.accessControlDesign
+
+            val base = compareByDescending<AppInfo> {
+                accessDesign.appRule(it.packageName) != AccessControlComposeDesign.AppRule.Default
+            }
+            val comparator = base.then(sort)
+            val packages = packageManager.getInstalledPackages(PackageManager.GET_PERMISSIONS)
+
+            packages.asSequence()
+                .filter { it.packageName != packageName }
+                .filter { it.applicationInfo != null }
+                .filter {
+                    it.requestedPermissions?.contains(INTERNET) == true ||
+                            it.applicationInfo!!.uid < android.os.Process.FIRST_APPLICATION_UID
+                }
+                .filter { systemApp || !it.isSystemApp }
+                .map { it.toAppInfo(packageManager) }
+                .sortedWith(comparator)
+                .toList()
+        }
+
     private fun MainComposeDesign.reloadProxyGroup(
         index: Int,
         names: List<String>,
@@ -547,4 +640,9 @@ class MainActivity : BaseActivity<MainComposeDesign>() {
 
         ShortcutManagerCompat.setDynamicShortcuts(this, listOf(toggle, start, stop))
     }
+
+    private val PackageInfo.isSystemApp: Boolean
+        get() {
+            return applicationInfo?.flags?.and(ApplicationInfo.FLAG_SYSTEM) != 0
+        }
 }

@@ -68,11 +68,6 @@ class UiStore(context: Context) {
         values = AppInfoSort.values(),
     )
 
-    var accessControlReverse: Boolean by store.boolean(
-        key = "access_control_reverse",
-        defaultValue = false
-    )
-
     var accessControlSystemApp: Boolean by store.boolean(
         key = "access_control_system_app",
         defaultValue = false,
