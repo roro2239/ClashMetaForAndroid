@@ -7,10 +7,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
+import androidx.navigationevent.compose.rememberNavigationEventDispatcherOwner
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
@@ -29,43 +32,49 @@ fun ClashMiuixDialog(
     onDismissRequest: () -> Unit,
     content: @Composable ColumnScope.() -> Unit = {},
 ) {
-    WindowDialog(
-        show = show,
-        title = title,
-        onDismissRequest = onDismissRequest,
+    val navigationOwner = rememberNavigationEventDispatcherOwner(parent = null)
+
+    CompositionLocalProvider(
+        LocalNavigationEventDispatcherOwner provides navigationOwner,
     ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        WindowDialog(
+            show = show,
+            title = title,
+            onDismissRequest = onDismissRequest,
         ) {
-            if (message != null) {
-                Text(
-                    text = message,
-                    color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
-                )
-            }
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                if (message != null) {
+                    Text(
+                        text = message,
+                        color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
+                    )
+                }
 
-            content()
+                content()
 
-            if (confirmText != null || dismissText != null) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    if (dismissText != null && onDismissButton != null) {
-                        TextButton(
-                            text = dismissText,
-                            onClick = onDismissButton,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    if (confirmText != null && onConfirm != null) {
-                        TextButton(
-                            text = confirmText,
-                            onClick = onConfirm,
-                            modifier = Modifier.weight(1f),
-                        )
+                if (confirmText != null || dismissText != null) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        if (dismissText != null && onDismissButton != null) {
+                            TextButton(
+                                text = dismissText,
+                                onClick = onDismissButton,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        if (confirmText != null && onConfirm != null) {
+                            TextButton(
+                                text = confirmText,
+                                onClick = onConfirm,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
                 }
             }

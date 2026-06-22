@@ -339,13 +339,19 @@ class ProxyComposeDesign(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = "${proxy.type} · ${proxy.delay} ms",
+                    text = proxy.delayText(),
                     color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
         }
+    }
+
+    private fun Proxy.delayText(): String {
+        if (delay <= 0) return type
+
+        return "$type · $delay ms"
     }
 
     @Composable

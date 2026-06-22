@@ -451,6 +451,9 @@ class MainActivity : BaseActivity<MainComposeDesign>() {
     }
 
     private suspend fun loadProxyNames(): List<String> {
+        val active = withProfile { queryActive() }
+        if (active == null || !active.imported) return emptyList()
+
         return withClash {
             queryProxyGroupNames(uiStore.proxyExcludeNotSelectable)
         }

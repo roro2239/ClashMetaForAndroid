@@ -21,7 +21,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.background
@@ -66,7 +68,6 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.TabRow
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
@@ -419,67 +420,11 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Card(
-                    colors = CardDefaults.defaultColors(
-                        color = if (homeState.clashRunning) {
-                            MiuixTheme.colorScheme.primaryContainer
-                        } else {
-                            MiuixTheme.colorScheme.surfaceContainer
-                        }
-                    ),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Text(
-                            text = if (homeState.clashRunning) {
-                                context.getString(com.github.kr328.clash.design.R.string.running)
-                            } else {
-                                context.getString(com.github.kr328.clash.design.R.string.stopped)
-                            },
-                            style = MiuixTheme.textStyles.title2,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            text = if (homeState.clashRunning) {
-                                context.getString(
-                                    com.github.kr328.clash.design.R.string.format_traffic_forwarded,
-                                    homeState.forwarded,
-                                )
-                            } else {
-                                context.getString(com.github.kr328.clash.design.R.string.tap_to_start)
-                            },
-                            style = MiuixTheme.textStyles.body1,
-                        )
-                        Button(onClick = { send(Request.ToggleStatus) }) {
-                            Text(
-                                text = if (homeState.clashRunning) {
-                                    context.getString(com.github.kr328.clash.design.R.string.stop)
-                                } else {
-                                    context.getString(com.github.kr328.clash.design.R.string.start)
-                                }
-                            )
-                        }
-                    }
-                }
+                HomeStatusCard()
             }
 
             item {
-                InfoCard(
-                    title = context.getString(com.github.kr328.clash.design.R.string.profile),
-                    summary = homeState.profileName
-                        ?: context.getString(com.github.kr328.clash.design.R.string.not_selected),
-                    onClick = { selectPage(Destination.Profiles.ordinal) },
-                )
-            }
-
-            item {
-                InfoCard(
-                    title = context.getString(com.github.kr328.clash.design.R.string.proxy),
-                    summary = homeState.mode,
-                    onClick = { selectPage(Destination.Proxy.ordinal) },
-                )
+                HomeInfoGrid()
             }
 
             item {
@@ -495,6 +440,126 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
                 }
             }
 
+        }
+    }
+
+    @Composable
+    private fun HomeStatusCard() {
+        val running = homeState.clashRunning
+        val statusText = if (running) {
+            context.getString(com.github.kr328.clash.design.R.string.running)
+        } else {
+            context.getString(com.github.kr328.clash.design.R.string.stopped)
+        }
+        val summaryText = if (running) {
+            context.getString(
+                com.github.kr328.clash.design.R.string.format_traffic_forwarded,
+                homeState.forwarded,
+            )
+        } else {
+            context.getString(com.github.kr328.clash.design.R.string.tap_to_start)
+        }
+        val actionText = if (running) {
+            context.getString(com.github.kr328.clash.design.R.string.stop)
+        } else {
+            context.getString(com.github.kr328.clash.design.R.string.start)
+        }
+
+        Card(
+            colors = CardDefaults.defaultColors(
+                color = if (running) {
+                    MiuixTheme.colorScheme.primaryContainer
+                } else {
+                    MiuixTheme.colorScheme.surfaceContainer
+                },
+            ),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = statusText,
+                        style = MiuixTheme.textStyles.title1,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = summaryText,
+                        style = MiuixTheme.textStyles.body1,
+                        color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Button(
+                    onClick = { send(Request.ToggleStatus) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(text = actionText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun HomeInfoGrid() {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            HomeInfoCard(
+                modifier = Modifier.weight(1f),
+                title = context.getString(com.github.kr328.clash.design.R.string.profile),
+                summary = homeState.profileName
+                    ?: context.getString(com.github.kr328.clash.design.R.string.not_selected),
+                onClick = { selectPage(Destination.Profiles.ordinal) },
+            )
+            HomeInfoCard(
+                modifier = Modifier.weight(1f),
+                title = context.getString(com.github.kr328.clash.design.R.string.proxy),
+                summary = homeState.mode.ifBlank {
+                    context.getString(com.github.kr328.clash.design.R.string.not_selected)
+                },
+                onClick = { selectPage(Destination.Proxy.ordinal) },
+            )
+        }
+    }
+
+    @Composable
+    private fun HomeInfoCard(
+        modifier: Modifier = Modifier,
+        title: String,
+        summary: String,
+        onClick: () -> Unit,
+    ) {
+        Card(
+            modifier = modifier,
+            onClick = onClick,
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = title,
+                    style = MiuixTheme.textStyles.body2,
+                    color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = summary,
+                    style = MiuixTheme.textStyles.body1,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 
@@ -517,12 +582,12 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
                 .fillMaxSize()
                 .padding(top = innerPadding.calculateTopPadding()),
         ) {
-            TabRow(
-                tabs = proxyGroups.map { it.name },
-                selectedTabIndex = pagerState.currentPage,
-                onTabSelected = { index ->
+            ProxyGroupTabs(
+                groups = proxyGroups,
+                selectedIndex = pagerState.currentPage,
+                onSelected = { index ->
                     scope.launch { pagerState.animateScrollToPage(index) }
-                }
+                },
             )
 
             HorizontalPager(
@@ -540,14 +605,60 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
     }
 
     @Composable
+    private fun ProxyGroupTabs(
+        groups: List<ProxyGroupState>,
+        selectedIndex: Int,
+        onSelected: (Int) -> Unit,
+    ) {
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            itemsIndexed(groups, key = { _, group -> group.name }) { index, group ->
+                val selected = index == selectedIndex
+                Box(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(
+                            if (selected) {
+                                MiuixTheme.colorScheme.primary
+                            } else {
+                                MiuixTheme.colorScheme.surfaceContainer
+                            },
+                        )
+                        .clickable { onSelected(index) }
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = group.name,
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = if (selected) {
+                            MiuixTheme.colorScheme.onPrimary
+                        } else {
+                            MiuixTheme.colorScheme.onSurface
+                        },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+    }
+
+    @Composable
     private fun ModeSelectorCard() {
         Card {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 Text(
                     text = context.getString(com.github.kr328.clash.design.R.string.mode),
+                    style = MiuixTheme.textStyles.body1,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Row(
@@ -577,6 +688,7 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
         modifier: Modifier = Modifier,
         mode: TunnelState.Mode,
     ) {
+        val selected = overrideMode == mode
         val label = when (mode) {
             TunnelState.Mode.Direct -> context.getString(com.github.kr328.clash.design.R.string.direct_mode)
             TunnelState.Mode.Global -> context.getString(com.github.kr328.clash.design.R.string.global_mode)
@@ -588,19 +700,24 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
             modifier = modifier,
             onClick = { send(Request.PatchMode(mode)) },
             colors = ButtonDefaults.buttonColors(
-                color = if (overrideMode == mode) {
+                color = if (selected) {
                     MiuixTheme.colorScheme.primary
                 } else {
                     MiuixTheme.colorScheme.surfaceContainer
                 },
-                contentColor = if (overrideMode == mode) {
+                contentColor = if (selected) {
                     MiuixTheme.colorScheme.onPrimary
                 } else {
                     MiuixTheme.colorScheme.onSurface
                 },
             ),
         ) {
-            Text(text = label)
+            Text(
+                text = label,
+                style = MiuixTheme.textStyles.body2,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 
@@ -624,32 +741,7 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = { send(Request.UrlTest(index)) },
-                    ) {
-                            Text(
-                                text = if (group.urlTesting) {
-                                    context.getString(com.github.kr328.clash.design.R.string.loading)
-                                } else {
-                                    context.getString(com.github.kr328.clash.design.R.string.delay_test)
-                                }
-                            )
-                    }
-                    Button(
-                        onClick = {},
-                        colors = ButtonDefaults.buttonColors(
-                            color = MiuixTheme.colorScheme.surfaceContainer,
-                            contentColor = MiuixTheme.colorScheme.onSurface,
-                        ),
-                    ) {
-                            Text(
-                                text = group.now,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                    }
-                }
+                ProxyGroupHeader(index = index, group = group)
             }
 
             items(group.proxies, key = { it.name }) { proxy ->
@@ -664,9 +756,67 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
     }
 
     @Composable
+    private fun ProxyGroupHeader(index: Int, group: ProxyGroupState) {
+        Card {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            text = group.name,
+                            style = MiuixTheme.textStyles.body1,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = group.now,
+                            style = MiuixTheme.textStyles.body2,
+                            color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    Text(
+                        text = "${group.proxies.size} 个节点",
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
+                        modifier = Modifier.padding(start = 12.dp),
+                    )
+                }
+                Button(
+                    onClick = { send(Request.UrlTest(index)) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = if (group.urlTesting) {
+                            context.getString(com.github.kr328.clash.design.R.string.loading)
+                        } else {
+                            context.getString(com.github.kr328.clash.design.R.string.delay_test)
+                        },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+    }
+
+    @Composable
     private fun ProxyItem(proxy: Proxy, selected: Boolean, selectable: Boolean, onClick: () -> Unit) {
         Card(
-            onClick = onClick,
+            onClick = if (selectable) onClick else null,
             colors = CardDefaults.defaultColors(
                 color = if (selected) {
                     MiuixTheme.colorScheme.secondaryContainer
@@ -675,32 +825,100 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
                 }
             ),
         ) {
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = proxy.title.ifEmpty { proxy.name },
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = proxy.subtitle,
-                    style = MiuixTheme.textStyles.body2,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = "${proxy.type} · ${proxy.delay} ms",
-                    style = MiuixTheme.textStyles.footnote1,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                ProxyTypeBadge(type = proxy.type)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = proxy.title.ifEmpty { proxy.name },
+                            modifier = Modifier.weight(1f),
+                            style = MiuixTheme.textStyles.body1,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (selected) {
+                            SelectedBadge()
+                        }
+                    }
+                    Text(
+                        text = proxy.subtitle.ifBlank { proxy.type },
+                        style = MiuixTheme.textStyles.body2,
+                        color = MiuixTheme.colorScheme.onSurfaceContainerVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    proxy.delayLabel()?.let { delay ->
+                        Text(
+                            text = delay,
+                            style = MiuixTheme.textStyles.footnote1,
+                            color = MiuixTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
             }
         }
+    }
+
+    @Composable
+    private fun ProxyTypeBadge(type: String) {
+        Box(
+            modifier = Modifier
+                .width(44.dp)
+                .height(44.dp)
+                .clip(CircleShape)
+                .background(MiuixTheme.colorScheme.primary.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = type.take(2).uppercase(),
+                style = MiuixTheme.textStyles.footnote1,
+                color = MiuixTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Clip,
+            )
+        }
+    }
+
+    @Composable
+    private fun SelectedBadge() {
+        Box(
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(MiuixTheme.colorScheme.primary.copy(alpha = 0.14f))
+                .padding(horizontal = 8.dp, vertical = 3.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "当前",
+                style = MiuixTheme.textStyles.footnote1,
+                color = MiuixTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+
+    private fun Proxy.delayLabel(): String? {
+        if (delay <= 0) return null
+
+        return "$delay ms"
     }
 
     @Composable
@@ -1063,16 +1281,6 @@ class MainComposeDesign(context: Context) : Design<MainComposeDesign.Request>(co
                 ) {
                     send(Request.StartMetaFeatureSettings)
                 }
-            }
-        }
-    }
-
-    @Composable
-    private fun InfoCard(title: String, summary: String, onClick: () -> Unit) {
-        Card(onClick = onClick) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(text = title, fontWeight = FontWeight.SemiBold)
-                Text(text = summary, style = MiuixTheme.textStyles.body1)
             }
         }
     }

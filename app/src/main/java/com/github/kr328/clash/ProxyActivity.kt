@@ -5,6 +5,7 @@ import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.design.model.ProxyState
 import com.github.kr328.clash.util.withClash
+import com.github.kr328.clash.util.withProfile
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
@@ -14,7 +15,12 @@ import kotlinx.coroutines.sync.withPermit
 class ProxyActivity : BaseActivity<ProxyComposeDesign>() {
     override suspend fun main() {
         val mode = withClash { queryOverride(Clash.OverrideSlot.Session).mode }
-        val names = withClash { queryProxyGroupNames(uiStore.proxyExcludeNotSelectable) }
+        val active = withProfile { queryActive() }
+        val names = if (active != null && active.imported) {
+            withClash { queryProxyGroupNames(uiStore.proxyExcludeNotSelectable) }
+        } else {
+            emptyList()
+        }
         val states = List(names.size) { ProxyState("?") }
         val unorderedStates = names.indices.map { names[it] to states[it] }.toMap()
         val reloadLock = Semaphore(10)

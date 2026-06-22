@@ -21,6 +21,8 @@ const (
 	Delay
 )
 
+const maxDelay uint16 = 0xffff
+
 type Proxy struct {
 	Name     string `json:"name"`
 	Title    string `json:"title"`
@@ -65,11 +67,8 @@ func QueryProxyGroupNames(excludeNotSelectable bool) []string {
 	}
 
 	for _, p := range proxies {
-		if g, ok := p.Adapter().(outboundgroup.ProxyGroup); ok {
+		if _, ok := p.Adapter().(outboundgroup.ProxyGroup); ok {
 			if !excludeNotSelectable || p.Type() == C.Selector {
-				if g.Hidden() {
-					continue
-				}
 				result = append(result, p.Name())
 			}
 		}
@@ -111,6 +110,12 @@ func QueryProxyGroup(name string, sortMode SortMode, uiSubtitlePattern *regexp2.
 		wrapper := &sortableProxyList{
 			list: proxies,
 			less: func(a, b *Proxy) bool {
+				if a.Delay == 0 {
+					return false
+				}
+				if b.Delay == 0 {
+					return true
+				}
 				return a.Delay < b.Delay
 			},
 		}
@@ -161,6 +166,14 @@ func PatchSelector(selector, name string) bool {
 	return true
 }
 
+func queryProxyDelay(p C.Proxy, testURL string) int {
+	delay := p.LastDelayForTestUrl(testURL)
+	if delay == maxDelay {
+		return 0
+	}
+	return int(delay)
+}
+
 func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp) []*Proxy {
 	result := make([]*Proxy, 0, 128)
 
@@ -193,7 +206,7 @@ func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp) []*Pro
 			Title:    strings.TrimSpace(title),
 			Subtitle: strings.TrimSpace(subtitle),
 			Type:     p.Type().String(),
-			Delay:    int(p.LastDelayForTestUrl(testURL)),
+			Delay:    queryProxyDelay(p, testURL),
 			IsGroup:  isGroup,
 		})
 	}
@@ -234,7 +247,7 @@ func collectProviders(providers []provider.ProxyProvider, uiSubtitlePattern *reg
 				Title:    strings.TrimSpace(title),
 				Subtitle: strings.TrimSpace(subtitle),
 				Type:     px.Type().String(),
-				Delay:    int(px.LastDelayForTestUrl(testURL)),
+				Delay:    queryProxyDelay(px, testURL),
 				IsGroup:  isGroup,
 			})
 		}
